@@ -31,6 +31,14 @@ var parsetests = []struct {
 	{"[section]\nbool=true", &conf02{sect02{true}}, true},
 	// default value (true)
 	{"[section]\nbool", &conf02{sect02{true}}, true},
+	// whitespace
+	{" \n[section]\nbool=true", &conf02{sect02{true}}, true},
+	{" [section]\nbool=true", &conf02{sect02{true}}, true},
+	{"\t[section]\nbool=true", &conf02{sect02{true}}, true},
+	{"[section]\n bool=true", &conf02{sect02{true}}, true},
+	{"[section]\nbool =true", &conf02{sect02{true}}, true},
+	{"[section]\nbool= true", &conf02{sect02{true}}, true},
+	{"[section]\nbool=true ", &conf02{sect02{true}}, true},
 	// error: line too long 
 	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
 	// error: no section

@@ -45,9 +45,9 @@ import (
 )
 
 var (
-	reSect    = regexp.MustCompile(`^\b*\[(.*)\]\b*$`)
-	reVar     = regexp.MustCompile(`^\b*(.*)\b*=\b*(.*)\b*$`)
-	reVarDflt = regexp.MustCompile(`^\b*(.+)\b*$`)
+	reSect    = regexp.MustCompile(`^\s*\[(.*)\]\s*$`)
+	reVar     = regexp.MustCompile(`^\s*\b(.*)\b\s*=\s*\b(.*)\b\s*$`)
+	reVarDflt = regexp.MustCompile(`^\s*\b(.*)\b\s*$`)
 )
 
 const (
