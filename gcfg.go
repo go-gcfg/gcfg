@@ -17,7 +17,6 @@
 // compatibility with any of those is not a primary concern.
 //
 // TODO: besides more docs and tests, add support for:
-//  - names without values (treated as true)
 //  - comments
 //  - quoted strings
 //  - hyphens in section names
@@ -46,8 +45,13 @@ import (
 )
 
 var (
-	reSect = regexp.MustCompile(`^\b*\[(.*)\]\b*$`)
-	reVar  = regexp.MustCompile(`^\b*(.*)\b*=\b*(.*)\b*$`)
+	reSect    = regexp.MustCompile(`^\b*\[(.*)\]\b*$`)
+	reVar     = regexp.MustCompile(`^\b*(.*)\b*=\b*(.*)\b*$`)
+	reVarDflt = regexp.MustCompile(`^\b*(.+)\b*$`)
+)
+
+const (
+	DefaultValue = "true"
 )
 
 func unref(v reflect.Value) reflect.Value {
@@ -87,11 +91,16 @@ func Parse(config interface{}, reader io.Reader) error {
 		if sec := reSect.FindSubmatch(l); sec != nil {
 			strsec := string(sec[1])
 			sect = &strsec
-		} else if def := reVar.FindSubmatch(l); def != nil {
+		} else if v, vd := reVar.FindSubmatch(l), reVarDflt.FindSubmatch(l); v != nil || vd != nil {
 			if sect == nil {
 				return errors.New("no section")
 			}
-			name, value := string(def[1]), string(def[2])
+			var name, value string
+			if v != nil {
+				name, value = string(v[1]), string(v[2])
+			} else { // vd != nil
+				name, value = string(vd[1]), DefaultValue
+			}
 			set(config, *sect, name, value)
 		}
 		if err == io.EOF {

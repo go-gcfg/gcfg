@@ -29,6 +29,8 @@ var parsetests = []struct {
 	{"[section]\nname=value", &conf01{sect01{"value"}}, true},
 	// non-string value
 	{"[section]\nbool=true", &conf02{sect02{true}}, true},
+	// default value (true)
+	{"[section]\nbool", &conf02{sect02{true}}, true},
 	// error: line too long 
 	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
 	// error: no section
