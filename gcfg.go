@@ -55,7 +55,7 @@ const (
 )
 
 func unref(v reflect.Value) reflect.Value {
-	for reflect.Ptr == v.Type().Kind() {
+	for v.Type().Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 	return v
