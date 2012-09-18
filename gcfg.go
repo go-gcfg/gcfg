@@ -17,7 +17,6 @@
 // compatibility with any of those is not a primary concern.
 //
 // TODO: besides more docs and tests, add support for:
-//  - comments
 //  - quoted strings
 //  - hyphens in section names
 //  - git-compatible bools 
@@ -45,6 +44,8 @@ import (
 )
 
 var (
+	reCmnt    = regexp.MustCompile(`^([^;#]*)[;#].*$`)
+	reBlank   = regexp.MustCompile(`^\s*$`)
 	reSect    = regexp.MustCompile(`^\s*\[(.*)\]\s*$`)
 	reVar     = regexp.MustCompile(`^\s*\b(.*)\b\s*=\s*\b(.*)\b\s*$`)
 	reVarDflt = regexp.MustCompile(`^\s*\b(.*)\b\s*$`)
@@ -87,21 +88,27 @@ func Parse(config interface{}, reader io.Reader) error {
 		} else if pre {
 			return errors.New("line too long")
 		}
-		// "switch" based on line contents
-		if sec := reSect.FindSubmatch(l); sec != nil {
-			strsec := string(sec[1])
-			sect = &strsec
-		} else if v, vd := reVar.FindSubmatch(l), reVarDflt.FindSubmatch(l); v != nil || vd != nil {
-			if sect == nil {
-				return errors.New("no section")
+		// exclude comments
+		if c := reCmnt.FindSubmatch(l); c != nil {
+			l = c[1]
+		}
+		if !reBlank.Match(l) {
+			// "switch" based on line contents
+			if sec := reSect.FindSubmatch(l); sec != nil {
+				strsec := string(sec[1])
+				sect = &strsec
+			} else if v, vd := reVar.FindSubmatch(l), reVarDflt.FindSubmatch(l); v != nil || vd != nil {
+				if sect == nil {
+					return errors.New("no section")
+				}
+				var name, value string
+				if v != nil {
+					name, value = string(v[1]), string(v[2])
+				} else { // vd != nil
+					name, value = string(vd[1]), DefaultValue
+				}
+				set(config, *sect, name, value)
 			}
-			var name, value string
-			if v != nil {
-				name, value = string(v[1]), string(v[2])
-			} else { // vd != nil
-				name, value = string(vd[1]), DefaultValue
-			}
-			set(config, *sect, name, value)
 		}
 		if err == io.EOF {
 			break

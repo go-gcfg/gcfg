@@ -26,6 +26,8 @@ var parsetests = []struct {
 	ok   bool
 }{
 	// from ExampleParseString
+	{"; Comment line\n[section]\nname=value # comment", &conf01{sect01{"value"}}, true},
+	// string value
 	{"[section]\nname=value", &conf01{sect01{"value"}}, true},
 	// non-string value
 	{"[section]\nbool=true", &conf02{sect02{true}}, true},
@@ -39,6 +41,15 @@ var parsetests = []struct {
 	{"[section]\nbool =true", &conf02{sect02{true}}, true},
 	{"[section]\nbool= true", &conf02{sect02{true}}, true},
 	{"[section]\nbool=true ", &conf02{sect02{true}}, true},
+	// comments
+	{"; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
+	{"# cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
+	{" ; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
+	{"\t; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
+	{"\n[section]; cmnt\nname=value", &conf01{sect01{"value"}}, true},
+	{"\n[section] ; cmnt\nname=value", &conf01{sect01{"value"}}, true},
+	{"\n[section]\nname=value; cmnt", &conf01{sect01{"value"}}, true},
+	{"\n[section]\nname=value ; cmnt", &conf01{sect01{"value"}}, true},
 	// error: line too long 
 	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
 	// error: no section

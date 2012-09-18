@@ -6,8 +6,9 @@ import (
 )
 
 func ExampleParseString() {
-	cfgStr := `[section]
-name=value`
+	cfgStr := `; Comment line
+[section]
+name=value # comment`
 	cfg := struct {
 		Section struct {
 			Name string
