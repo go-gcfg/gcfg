@@ -17,7 +17,6 @@
 // compatibility with any of those is not a primary concern.
 //
 // TODO: besides more docs and tests, add support for:
-//  - quoted strings
 //  - git-compatible bools 
 //  - pointer fields
 //  - subsections
@@ -43,14 +42,17 @@ import (
 )
 
 var (
-	reCmnt    = regexp.MustCompile(`^([^;#]*)[;#].*$`)
+	reCmnt    = regexp.MustCompile(`^([^;#"]*)[;#].*$`)
+	reCmntQ   = regexp.MustCompile(`^([^;#"]*"[^"]*"[^;#"]*)[;#].*$`)
 	reBlank   = regexp.MustCompile(`^\s*$`)
 	reSect    = regexp.MustCompile(`^\s*\[(.*)\]\s*$`)
-	reVar     = regexp.MustCompile(`^\s*\b(.*)\b\s*=\s*\b(.*)\b\s*$`)
+	reVar     = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*([^"\s]+)\s*$`)
+	reVarQ    = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*"([^"\n\\]*)"\s*$`)
 	reVarDflt = regexp.MustCompile(`^\s*\b(.*)\b\s*$`)
 )
 
 const (
+	// Default value in case a value for a variable isn't provided.
 	DefaultValue = "true"
 )
 
@@ -72,7 +74,13 @@ func set(cfg interface{}, sect, name, value string) error {
 	vDest := unref(reflect.ValueOf(cfg))
 	vSect := unref(fieldFold(vDest, sect))
 	vName := unref(fieldFold(vSect, name))
-	fmt.Sscan(value, vName.Addr().Interface())
+	vAddr := vName.Addr().Interface()
+	switch v := vAddr.(type) {
+	case *string:
+		*v = value
+	default:
+		fmt.Sscan(value, vAddr)
+	}
 	return nil
 }
 
@@ -91,19 +99,23 @@ func Parse(config interface{}, reader io.Reader) error {
 		// exclude comments
 		if c := reCmnt.FindSubmatch(l); c != nil {
 			l = c[1]
+		} else if c := reCmntQ.FindSubmatch(l); c != nil {
+			l = c[1]
 		}
 		if !reBlank.Match(l) {
 			// "switch" based on line contents
 			if sec := reSect.FindSubmatch(l); sec != nil {
 				strsec := string(sec[1])
 				sect = &strsec
-			} else if v, vd := reVar.FindSubmatch(l), reVarDflt.FindSubmatch(l); v != nil || vd != nil {
+			} else if v, vq, vd := reVar.FindSubmatch(l), reVarQ.FindSubmatch(l), reVarDflt.FindSubmatch(l); v != nil || vq != nil || vd != nil {
 				if sect == nil {
 					return errors.New("no section")
 				}
 				var name, value string
 				if v != nil {
 					name, value = string(v[1]), string(v[2])
+				} else if vq != nil {
+					name, value = string(vq[1]), string(vq[2])
 				} else { // vd != nil
 					name, value = string(vd[1]), DefaultValue
 				}

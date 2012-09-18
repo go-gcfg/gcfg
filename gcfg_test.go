@@ -38,6 +38,12 @@ var parsetests = []struct {
 	{"[section]\nbool", &conf02{sect02{true}}, true},
 	// hyphen in name
 	{"[hyphen-in-section]\nhyphen-in-name=value", &conf03{sect03{"value"}}, true},
+	// quoted string value
+	{"[section]\nname=\"\"", &conf01{sect01{""}}, true},
+	{"[section]\nname=\" \"", &conf01{sect01{" "}}, true},
+	{"[section]\nname=\"value\"", &conf01{sect01{"value"}}, true},
+	{"[section]\nname=\" value \"", &conf01{sect01{" value "}}, true},
+	{"\n[section]\nname=\"value ; cmnt\"", &conf01{sect01{"value ; cmnt"}}, true},
 	// whitespace
 	{" \n[section]\nbool=true", &conf02{sect02{true}}, true},
 	{" [section]\nbool=true", &conf02{sect02{true}}, true},
@@ -55,6 +61,9 @@ var parsetests = []struct {
 	{"\n[section] ; cmnt\nname=value", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value ; cmnt", &conf01{sect01{"value"}}, true},
+	{"\n[section]\nname=\"value\" ; cmnt", &conf01{sect01{"value"}}, true},
+	{"\n[section]\nname=value ; \"cmnt", &conf01{sect01{"value"}}, true},
+	{"\n[section]\nname=\"value ; cmnt\" ; cmnt", &conf01{sect01{"value ; cmnt"}}, true},
 	// error: line too long 
 	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
 	// error: no section
@@ -70,16 +79,21 @@ func TestParse(t *testing.T) {
 		err := ParseString(res, tt.gcfg)
 		if tt.ok {
 			if err != nil {
-				t.Errorf("#%d fail: got error %#v, wanted ok", i, err)
+				t.Errorf("#%d fail: got error %v, wanted ok", i, err)
+				continue
 			} else if !reflect.DeepEqual(res, tt.exp) {
 				t.Errorf("#%d fail: got %#v, wanted %#v", i, res, tt.exp)
-			} else {
+				continue
+			}
+			if !testing.Short() {
 				t.Logf("#%d pass: ok, %#v", i, res)
 			}
 		} else { // !tt.ok
 			if err == nil {
 				t.Errorf("#%d fail: got %#v, wanted error", i, res)
-			} else {
+				continue
+			}
+			if !testing.Short() {
 				t.Logf("#%d pass: !ok, %#v", i, err)
 			}
 		}
