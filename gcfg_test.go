@@ -49,13 +49,15 @@ func TestParse(t *testing.T) {
 				t.Errorf("#%d fail: got error %#v, wanted ok", i, err)
 			} else if !reflect.DeepEqual(res, tt.exp) {
 				t.Errorf("#%d fail: got %#v, wanted %#v", i, res, tt.exp)
+			} else {
+				t.Logf("#%d pass: ok, %#v", i, res)
 			}
-			t.Logf("#%d pass: ok, %#v", i, res)
 		} else { // !tt.ok
 			if err == nil {
 				t.Errorf("#%d fail: got %#v, wanted error", i, res)
+			} else {
+				t.Logf("#%d pass: !ok, %#v", i, err)
 			}
-			t.Logf("#%d pass: !ok, %#v", i, err)
 		}
 	}
 }
