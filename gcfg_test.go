@@ -17,6 +17,9 @@ const (
 type sect01 struct{ Name string }
 type conf01 struct{ Section sect01 }
 
+type sect02 struct{ Bool bool }
+type conf02 struct{ Section sect02 }
+
 var parsetests = []struct {
 	gcfg string
 	exp  interface{}
@@ -24,6 +27,8 @@ var parsetests = []struct {
 }{
 	// from ExampleParseString
 	{"[section]\nname=value", &conf01{sect01{"value"}}, true},
+	// non-string value
+	{"[section]\nbool=true", &conf02{sect02{true}}, true},
 	// error: line too long 
 	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
 	// error: no section
