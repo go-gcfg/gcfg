@@ -20,6 +20,9 @@ type conf01 struct{ Section sect01 }
 type sect02 struct{ Bool bool }
 type conf02 struct{ Section sect02 }
 
+type sect03 struct{ Hyphen_In_Name string }
+type conf03 struct{ Hyphen_In_Section sect03 }
+
 var parsetests = []struct {
 	gcfg string
 	exp  interface{}
@@ -33,6 +36,8 @@ var parsetests = []struct {
 	{"[section]\nbool=true", &conf02{sect02{true}}, true},
 	// default value (true)
 	{"[section]\nbool", &conf02{sect02{true}}, true},
+	// hyphen in name
+	{"[hyphen-in-section]\nhyphen-in-name=value", &conf03{sect03{"value"}}, true},
 	// whitespace
 	{" \n[section]\nbool=true", &conf02{sect02{true}}, true},
 	{" [section]\nbool=true", &conf02{sect02{true}}, true},

@@ -18,7 +18,6 @@
 //
 // TODO: besides more docs and tests, add support for:
 //  - quoted strings
-//  - hyphens in section names
 //  - git-compatible bools 
 //  - pointer fields
 //  - subsections
@@ -63,8 +62,9 @@ func unref(v reflect.Value) reflect.Value {
 }
 
 func fieldFold(v reflect.Value, name string) reflect.Value {
+	n := strings.Replace(name, "-", "_", -1)
 	return v.FieldByNameFunc(func(fieldName string) bool {
-		return strings.EqualFold(name, fieldName)
+		return strings.EqualFold(n, fieldName)
 	})
 }
 
