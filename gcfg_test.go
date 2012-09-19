@@ -64,12 +64,14 @@ var parsetests = []struct {
 	{" \n[section]\nbool=true", &conf02{sect02{true}}, true},
 	{" [section]\nbool=true", &conf02{sect02{true}}, true},
 	{"\t[section]\nbool=true", &conf02{sect02{true}}, true},
+	{"[ section]\nbool=true", &conf02{sect02{true}}, true},
+	{"[section ]\nbool=true", &conf02{sect02{true}}, true},
 	{"[section]\n bool=true", &conf02{sect02{true}}, true},
 	{"[section]\nbool =true", &conf02{sect02{true}}, true},
 	{"[section]\nbool= true", &conf02{sect02{true}}, true},
+	// #30
 	{"[section]\nbool=true ", &conf02{sect02{true}}, true},
 	{"[section]\r\nbool=true", &conf02{sect02{true}}, true},
-	// #30
 	{"[section]\r\nbool=true\r\n", &conf02{sect02{true}}, true},
 	{";cmnt\r\n[section]\r\nbool=true\r\n", &conf02{sect02{true}}, true},
 	// comments
@@ -79,9 +81,9 @@ var parsetests = []struct {
 	{"\t; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"\n[section]; cmnt\nname=value", &conf01{sect01{"value"}}, true},
 	{"\n[section] ; cmnt\nname=value", &conf01{sect01{"value"}}, true},
+	// #40
 	{"\n[section]\nname=value; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value ; cmnt", &conf01{sect01{"value"}}, true},
-	// #40
 	{"\n[section]\nname=\"value\" ; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value ; \"cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=\"value ; cmnt\" ; cmnt", &conf01{sect01{"value ; cmnt"}}, true},
@@ -94,6 +96,7 @@ var parsetests = []struct {
 	{"name=value", &conf01{}, false},
 	// error: failed to parse
 	{"\n[section]\nbool=maybe", &conf02{sect02{}}, false},
+	// #50
 }
 
 func TestParse(t *testing.T) {

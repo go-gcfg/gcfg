@@ -44,7 +44,7 @@ var (
 	reCmnt    = regexp.MustCompile(`^([^;#"]*)[;#].*$`)
 	reCmntQ   = regexp.MustCompile(`^([^;#"]*"[^"]*"[^;#"]*)[;#].*$`)
 	reBlank   = regexp.MustCompile(`^\s*$`)
-	reSect    = regexp.MustCompile(`^\s*\[(.*)\]\s*$`)
+	reSect    = regexp.MustCompile(`^\s*\[\s*([^\s]*)\s*\]\s*$`)
 	reVar     = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*([^"\s]*)\s*$`)
 	reVarQ    = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*"([^"\n\\]*)"\s*$`)
 	reVarDflt = regexp.MustCompile(`^\s*\b(.*)\b\s*$`)
