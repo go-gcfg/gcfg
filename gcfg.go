@@ -110,8 +110,8 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 
 func set(cfg interface{}, sect, name, value string) error {
 	vDest := unref(reflect.ValueOf(cfg))
-	vSect := unref(fieldFold(vDest, sect))
-	vName := unref(fieldFold(vSect, name))
+	vSect := fieldFold(vDest, sect)
+	vName := fieldFold(vSect, name)
 	vAddr := vName.Addr().Interface()
 	switch v := vAddr.(type) {
 	case *string:
