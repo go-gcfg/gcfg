@@ -94,13 +94,6 @@ func (b *Bool) Scan(state fmt.ScanState, verb rune) error {
 	return err
 }
 
-func unref(v reflect.Value) reflect.Value {
-	for v.Type().Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	return v
-}
-
 func fieldFold(v reflect.Value, name string) reflect.Value {
 	n := strings.Replace(name, "-", "_", -1)
 	return v.FieldByNameFunc(func(fieldName string) bool {
@@ -109,7 +102,7 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 }
 
 func set(cfg interface{}, sect, name, value string) error {
-	vDest := unref(reflect.ValueOf(cfg))
+	vDest := reflect.ValueOf(cfg).Elem()
 	vSect := fieldFold(vDest, sect)
 	vName := fieldFold(vSect, name)
 	vAddr := vName.Addr().Interface()
