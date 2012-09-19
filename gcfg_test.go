@@ -28,10 +28,12 @@ var parsetests = []struct {
 	exp  interface{}
 	ok   bool
 }{
+	// #0
 	// from ExampleParseString
 	{"; Comment line\n[section]\nname=value # comment", &conf01{sect01{"value"}}, true},
 	// string value
 	{"[section]\nname=value", &conf01{sect01{"value"}}, true},
+	{"[section]\nname=", &conf01{sect01{""}}, true},
 	// non-string value
 	{"[section]\nbool=true", &conf02{sect02{true}}, true},
 	// default value (true)
@@ -43,7 +45,21 @@ var parsetests = []struct {
 	{"[section]\nname=\" \"", &conf01{sect01{" "}}, true},
 	{"[section]\nname=\"value\"", &conf01{sect01{"value"}}, true},
 	{"[section]\nname=\" value \"", &conf01{sect01{" value "}}, true},
+	// #10
 	{"\n[section]\nname=\"value ; cmnt\"", &conf01{sect01{"value ; cmnt"}}, true},
+	// bool values
+	{"[section]\nbool=true", &conf02{sect02{true}}, true},
+	{"[section]\nbool=yes", &conf02{sect02{true}}, true},
+	{"[section]\nbool=on", &conf02{sect02{true}}, true},
+	{"[section]\nbool=1", &conf02{sect02{true}}, true},
+	{"[section]\nbool=false", &conf02{sect02{false}}, true},
+	{"[section]\nbool=no", &conf02{sect02{false}}, true},
+	{"[section]\nbool=off", &conf02{sect02{false}}, true},
+	{"[section]\nbool=0", &conf02{sect02{false}}, true},
+	{"[section]\nbool=t", &conf02{}, false},
+	// #20
+	{"[section]\nbool=truer", &conf02{}, false},
+	{"[section]\nbool=-1", &conf02{}, false},
 	// whitespace
 	{" \n[section]\nbool=true", &conf02{sect02{true}}, true},
 	{" [section]\nbool=true", &conf02{sect02{true}}, true},
@@ -54,6 +70,7 @@ var parsetests = []struct {
 	{"[section]\nbool=true ", &conf02{sect02{true}}, true},
 	// comments
 	{"; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
+	// #30
 	{"# cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{" ; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"\t; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
@@ -64,10 +81,16 @@ var parsetests = []struct {
 	{"\n[section]\nname=\"value\" ; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value ; \"cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=\"value ; cmnt\" ; cmnt", &conf01{sect01{"value ; cmnt"}}, true},
+	// #40
+	{"\n[section]\nname=; cmnt", &conf01{sect01{""}}, true},
+	// error: invalid line
+	{"\n[section]\n=", &conf01{}, false},
 	// error: line too long 
 	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
 	// error: no section
 	{"name=value", &conf01{}, false},
+	// error: failed to parse
+	{"\n[section]\nbool=maybe", &conf02{sect02{}}, false},
 }
 
 func TestParse(t *testing.T) {

@@ -17,7 +17,6 @@
 // compatibility with any of those is not a primary concern.
 //
 // TODO: besides more docs and tests, add support for:
-//  - git-compatible bools 
 //  - pointer fields
 //  - subsections
 //  - multi-value variables (+ internal representation)
@@ -46,7 +45,7 @@ var (
 	reCmntQ   = regexp.MustCompile(`^([^;#"]*"[^"]*"[^;#"]*)[;#].*$`)
 	reBlank   = regexp.MustCompile(`^\s*$`)
 	reSect    = regexp.MustCompile(`^\s*\[(.*)\]\s*$`)
-	reVar     = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*([^"\s]+)\s*$`)
+	reVar     = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*([^"\s]*)\s*$`)
 	reVarQ    = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*"([^"\n\\]*)"\s*$`)
 	reVarDflt = regexp.MustCompile(`^\s*\b(.*)\b\s*$`)
 )
@@ -55,6 +54,45 @@ const (
 	// Default value in case a value for a variable isn't provided.
 	DefaultValue = "true"
 )
+
+type Bool bool
+
+var boolValues = map[string]interface{}{
+	"true": true, "yes": true, "on": true, "1": true,
+	"false": false, "no": false, "off": false, "0": false}
+
+func scan(state fmt.ScanState, values map[string]interface{}) (interface{}, error) {
+	var rd []rune
+	var r rune
+	var err error
+	for r, _, err = state.ReadRune(); err == nil; r, _, err = state.ReadRune() {
+		rd = append(rd, r)
+		part := false
+		for s, v := range values {
+			if strings.EqualFold(string(rd), s) {
+				return v, err
+			}
+			if len(rd) < len(s) && strings.EqualFold(string(rd), s[:len(rd)]) {
+				part = true
+			}
+		}
+		if part == false {
+			state.UnreadRune()
+			return nil, errors.New("unsupported value " + string(rd))
+		}
+	}
+	return nil, err
+}
+
+func (b *Bool) Scan(state fmt.ScanState, verb rune) error {
+	v, err := scan(state, boolValues)
+	switch bb := v.(type) {
+	case bool:
+		*b = Bool(bb)
+		return err
+	}
+	return err
+}
 
 func unref(v reflect.Value) reflect.Value {
 	for v.Type().Kind() == reflect.Ptr {
@@ -78,8 +116,16 @@ func set(cfg interface{}, sect, name, value string) error {
 	switch v := vAddr.(type) {
 	case *string:
 		*v = value
-	default:
-		fmt.Sscan(value, vAddr)
+		return nil
+	case *bool:
+		vAddr = (*Bool)(v)
+	}
+	var r rune // attempt to read an extra rune
+	n, err := fmt.Sscanf(value, "%v%c", vAddr, &r)
+	if n < 1 && err != io.EOF {
+		return err
+	} else if n != 1 || err != io.EOF {
+		return fmt.Errorf("failed to parse %q as %#v", value, vName.Type())
 	}
 	return nil
 }
@@ -107,7 +153,9 @@ func Parse(config interface{}, reader io.Reader) error {
 			if sec := reSect.FindSubmatch(l); sec != nil {
 				strsec := string(sec[1])
 				sect = &strsec
-			} else if v, vq, vd := reVar.FindSubmatch(l), reVarQ.FindSubmatch(l), reVarDflt.FindSubmatch(l); v != nil || vq != nil || vd != nil {
+			} else if v, vq, vd := reVar.FindSubmatch(l),
+				reVarQ.FindSubmatch(l), reVarDflt.FindSubmatch(l); //
+			v != nil || vq != nil || vd != nil {
 				if sect == nil {
 					return errors.New("no section")
 				}
@@ -119,7 +167,12 @@ func Parse(config interface{}, reader io.Reader) error {
 				} else { // vd != nil
 					name, value = string(vd[1]), DefaultValue
 				}
-				set(config, *sect, name, value)
+				err := set(config, *sect, name, value)
+				if err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("invalid line %q", string(l))
 			}
 		}
 		if err == io.EOF {
