@@ -10,15 +10,15 @@
 // Note that the gcfg syntax may diverge from that of git config in the future
 // to a limited degree. Current differences (apart from TODOs listed below) are:
 //  - gcfg files must use UTF-8 encoding (for now)
-//  - include is not supported (and not planned) 
+//  - include is not supported (and not planned)
+//  - `[sec ""]` is not allowed
+//    - `[sec]` is the equivalent (section name "sec" and subsection name "")  
 //
 // The package may be usable for handling some of the various "INI file" formats
 // used by some programs and libraries, but achieving or maintaining
 // compatibility with any of those is not a primary concern.
 //
 // TODO: besides more docs and tests, add support for:
-//  - pointer fields
-//  - subsections
 //  - multi-value variables (+ internal representation)
 //  - returning error context (+ numeric error codes ?)
 //  - multiple readers (strings, files)
@@ -26,6 +26,7 @@
 //  - modifying files
 //  - exporting files (+ metadata handling) (?)
 //  - declare encoding (?)
+//  - pointer fields (other than subsection maps) (?)
 //
 package gcfg
 
@@ -44,7 +45,8 @@ var (
 	reCmnt    = regexp.MustCompile(`^([^;#"]*)[;#].*$`)
 	reCmntQ   = regexp.MustCompile(`^([^;#"]*"[^"]*"[^;#"]*)[;#].*$`)
 	reBlank   = regexp.MustCompile(`^\s*$`)
-	reSect    = regexp.MustCompile(`^\s*\[\s*([^\s]*)\s*\]\s*$`)
+	reSect    = regexp.MustCompile(`^\s*\[\s*([^"\s]*)\s*\]\s*$`)
+	reSectSub = regexp.MustCompile(`^\s*\[\s*([^"\s]*)\s*"([^"]+)"\s*\]\s*$`)
 	reVar     = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*([^"\s]*)\s*$`)
 	reVarQ    = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*"([^"\n\\]*)"\s*$`)
 	reVarDflt = regexp.MustCompile(`^\s*\b(.*)\b\s*$`)
@@ -61,7 +63,9 @@ var boolValues = map[string]interface{}{
 	"true": true, "yes": true, "on": true, "1": true,
 	"false": false, "no": false, "off": false, "0": false}
 
-func scan(state fmt.ScanState, values map[string]interface{}) (interface{}, error) {
+func scan(state fmt.ScanState, values map[string]interface{}) (
+	interface{}, error) {
+	//
 	var rd []rune
 	var r rune
 	var err error
@@ -101,9 +105,24 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 	})
 }
 
-func set(cfg interface{}, sect, name, value string) error {
+func set(cfg interface{}, sect, sub, name, value string) error {
 	vDest := reflect.ValueOf(cfg).Elem()
 	vSect := fieldFold(vDest, sect)
+	if vSect.Kind() == reflect.Map {
+		if vSect.IsNil() {
+			vSect.Set(reflect.MakeMap(vSect.Type()))
+		}
+		k := reflect.ValueOf(sub)
+		pv := vSect.MapIndex(k)
+		if !pv.IsValid() {
+			vType := vSect.Type().Elem().Elem()
+			pv = reflect.New(vType)
+			vSect.SetMapIndex(k, pv)
+		}
+		vSect = pv.Elem()
+	} else if sub != "" {
+		return fmt.Errorf("expected map; section %q subsection %q", sect, sub)
+	}
 	vName := fieldFold(vSect, name)
 	vAddr := vName.Addr().Interface()
 	switch v := vAddr.(type) {
@@ -134,6 +153,7 @@ func set(cfg interface{}, sect, name, value string) error {
 func Parse(config interface{}, reader io.Reader) error {
 	r := bufio.NewReader(reader)
 	sect := (*string)(nil)
+	sectsub := ""
 	for line := 1; true; line++ {
 		l, pre, err := r.ReadLine()
 		if err != nil && err != io.EOF {
@@ -151,7 +171,14 @@ func Parse(config interface{}, reader io.Reader) error {
 			// "switch" based on line contents
 			if sec := reSect.FindSubmatch(l); sec != nil {
 				strsec := string(sec[1])
-				sect = &strsec
+				sect, sectsub = &strsec, ""
+			} else if sec := reSectSub.FindSubmatch(l); sec != nil {
+				strsec := string(sec[1])
+				strsub := string(sec[2])
+				if strsub == "" {
+					return errors.New("empty subsection not allowed")
+				}
+				sect, sectsub = &strsec, strsub
 			} else if v, vq, vd := reVar.FindSubmatch(l),
 				reVarQ.FindSubmatch(l), reVarDflt.FindSubmatch(l); //
 			v != nil || vq != nil || vd != nil {
@@ -166,7 +193,7 @@ func Parse(config interface{}, reader io.Reader) error {
 				} else { // vd != nil
 					name, value = string(vd[1]), DefaultValue
 				}
-				err := set(config, *sect, name, value)
+				err := set(config, *sect, sectsub, name, value)
 				if err != nil {
 					return err
 				}

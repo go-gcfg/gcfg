@@ -23,6 +23,9 @@ type conf02 struct{ Section sect02 }
 type sect03 struct{ Hyphen_In_Name string }
 type conf03 struct{ Hyphen_In_Section sect03 }
 
+type sect04 struct{ Name string }
+type conf04 struct{ Sub map[string]*sect04 }
+
 var parsetests = []struct {
 	gcfg string
 	exp  interface{}
@@ -88,15 +91,20 @@ var parsetests = []struct {
 	{"\n[section]\nname=value ; \"cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=\"value ; cmnt\" ; cmnt", &conf01{sect01{"value ; cmnt"}}, true},
 	{"\n[section]\nname=; cmnt", &conf01{sect01{""}}, true},
+	// subsections
+	{"\n[sub \"A\"]\nname=value", &conf04{map[string]*sect04{"A": &sect04{"value"}}}, true},
+	{"\n[sub \"b\"]\nname=value", &conf04{map[string]*sect04{"b": &sect04{"value"}}}, true},
 	// error: invalid line
 	{"\n[section]\n=", &conf01{}, false},
 	// error: line too long 
 	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
+	// #50
 	// error: no section
 	{"name=value", &conf01{}, false},
 	// error: failed to parse
 	{"\n[section]\nbool=maybe", &conf02{sect02{}}, false},
-	// #50
+	// error: empty subsection
+	{"\n[sub \"\"]\nname=value", &conf04{}, false},
 }
 
 func TestParse(t *testing.T) {
