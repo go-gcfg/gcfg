@@ -120,14 +120,20 @@ func set(cfg interface{}, sect, name, value string) error {
 	case *bool:
 		vAddr = (*Bool)(v)
 	}
-	var r rune // attempt to read an extra rune
+	// attempt to read an extra rune to make sure the value is consumed 
+	var r rune
 	n, err := fmt.Sscanf(value, "%v%c", vAddr, &r)
-	if n < 1 && err != io.EOF {
-		return err
-	} else if n != 1 || err != io.EOF {
-		return fmt.Errorf("failed to parse %q as %#v", value, vName.Type())
+	switch {
+	case n < 1 || n == 1 && err != io.EOF:
+		return fmt.Errorf("failed to parse %q as %#v: parse error %v", value,
+			vName.Type(), err)
+	case n > 1:
+		return fmt.Errorf("failed to parse %q as %#v: extra characters", value,
+			vName.Type())
+	case n == 1 && err == io.EOF:
+		return nil
 	}
-	return nil
+	panic("never reached")
 }
 
 // Parse reads gcfg formatted data from reader and sets the values into the
