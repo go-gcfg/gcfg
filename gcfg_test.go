@@ -1,6 +1,7 @@
 package gcfg
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -26,14 +27,16 @@ type conf03 struct{ Hyphen_In_Section sect03 }
 type sect04 struct{ Name string }
 type conf04 struct{ Sub map[string]*sect04 }
 
-var parsetests = []struct {
+type parsetest struct {
 	gcfg string
 	exp  interface{}
 	ok   bool
-}{
-	// #0
-	// from ExampleParseString
-	{"; Comment line\n[section]\nname=value # comment", &conf01{sect01{"value"}}, true},
+}
+
+var parsetests = []struct {
+	group string
+	tests []parsetest
+}{{"basic", []parsetest{
 	// string value
 	{"[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"[section]\nname=", &conf01{sect01{""}}, true},
@@ -48,9 +51,8 @@ var parsetests = []struct {
 	{"[section]\nname=\" \"", &conf01{sect01{" "}}, true},
 	{"[section]\nname=\"value\"", &conf01{sect01{"value"}}, true},
 	{"[section]\nname=\" value \"", &conf01{sect01{" value "}}, true},
-	// #10
 	{"\n[section]\nname=\"value ; cmnt\"", &conf01{sect01{"value ; cmnt"}}, true},
-	// bool values
+}}, {"bool", []parsetest{
 	{"[section]\nbool=true", &conf02{sect02{true}}, true},
 	{"[section]\nbool=yes", &conf02{sect02{true}}, true},
 	{"[section]\nbool=on", &conf02{sect02{true}}, true},
@@ -60,10 +62,9 @@ var parsetests = []struct {
 	{"[section]\nbool=off", &conf02{sect02{false}}, true},
 	{"[section]\nbool=0", &conf02{sect02{false}}, true},
 	{"[section]\nbool=t", &conf02{}, false},
-	// #20
 	{"[section]\nbool=truer", &conf02{}, false},
 	{"[section]\nbool=-1", &conf02{}, false},
-	// whitespace
+}}, {"whitespace", []parsetest{
 	{" \n[section]\nbool=true", &conf02{sect02{true}}, true},
 	{" [section]\nbool=true", &conf02{sect02{true}}, true},
 	{"\t[section]\nbool=true", &conf02{sect02{true}}, true},
@@ -72,28 +73,27 @@ var parsetests = []struct {
 	{"[section]\n bool=true", &conf02{sect02{true}}, true},
 	{"[section]\nbool =true", &conf02{sect02{true}}, true},
 	{"[section]\nbool= true", &conf02{sect02{true}}, true},
-	// #30
 	{"[section]\nbool=true ", &conf02{sect02{true}}, true},
 	{"[section]\r\nbool=true", &conf02{sect02{true}}, true},
 	{"[section]\r\nbool=true\r\n", &conf02{sect02{true}}, true},
 	{";cmnt\r\n[section]\r\nbool=true\r\n", &conf02{sect02{true}}, true},
-	// comments
+}}, {"comments", []parsetest{
 	{"; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"# cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{" ; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"\t; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"\n[section]; cmnt\nname=value", &conf01{sect01{"value"}}, true},
 	{"\n[section] ; cmnt\nname=value", &conf01{sect01{"value"}}, true},
-	// #40
 	{"\n[section]\nname=value; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value ; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=\"value\" ; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value ; \"cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=\"value ; cmnt\" ; cmnt", &conf01{sect01{"value ; cmnt"}}, true},
 	{"\n[section]\nname=; cmnt", &conf01{sect01{""}}, true},
-	// subsections
+}}, {"subsections", []parsetest{
 	{"\n[sub \"A\"]\nname=value", &conf04{map[string]*sect04{"A": &sect04{"value"}}}, true},
 	{"\n[sub \"b\"]\nname=value", &conf04{map[string]*sect04{"b": &sect04{"value"}}}, true},
+}}, {"errors", []parsetest{
 	// error: invalid line
 	{"\n[section]\n=", &conf01{}, false},
 	// error: line too long 
@@ -105,33 +105,37 @@ var parsetests = []struct {
 	{"\n[section]\nbool=maybe", &conf02{sect02{}}, false},
 	// error: empty subsection
 	{"\n[sub \"\"]\nname=value", &conf04{}, false},
+}},
 }
 
 func TestParse(t *testing.T) {
-	for i, tt := range parsetests {
-		// get the type of the expected result 
-		restyp := reflect.TypeOf(tt.exp).Elem()
-		// create a new instance to hold the actual result
-		res := reflect.New(restyp).Interface()
-		err := ParseString(res, tt.gcfg)
-		if tt.ok {
-			if err != nil {
-				t.Errorf("#%d fail: got error %v, wanted ok", i, err)
-				continue
-			} else if !reflect.DeepEqual(res, tt.exp) {
-				t.Errorf("#%d fail: got %#v, wanted %#v", i, res, tt.exp)
-				continue
-			}
-			if !testing.Short() {
-				t.Logf("#%d pass: ok, %#v", i, res)
-			}
-		} else { // !tt.ok
-			if err == nil {
-				t.Errorf("#%d fail: got %#v, wanted error", i, res)
-				continue
-			}
-			if !testing.Short() {
-				t.Logf("#%d pass: !ok, %#v", i, err)
+	for _, tg := range parsetests {
+		for i, tt := range tg.tests {
+			id := fmt.Sprintf("%s:%d", tg.group, i)
+			// get the type of the expected result 
+			restyp := reflect.TypeOf(tt.exp).Elem()
+			// create a new instance to hold the actual result
+			res := reflect.New(restyp).Interface()
+			err := ParseString(res, tt.gcfg)
+			if tt.ok {
+				if err != nil {
+					t.Errorf("%s fail: got error %v, wanted ok", id, err)
+					continue
+				} else if !reflect.DeepEqual(res, tt.exp) {
+					t.Errorf("%s fail: got %#v, wanted %#v", id, res, tt.exp)
+					continue
+				}
+				if !testing.Short() {
+					t.Logf("%s pass: ok, %#v", id, res)
+				}
+			} else { // !tt.ok
+				if err == nil {
+					t.Errorf("%s fail: got %#v, wanted error", id, res)
+					continue
+				}
+				if !testing.Short() {
+					t.Logf("%s pass: !ok, %#v", id, err)
+				}
 			}
 		}
 	}
