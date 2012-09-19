@@ -68,9 +68,12 @@ var parsetests = []struct {
 	{"[section]\nbool =true", &conf02{sect02{true}}, true},
 	{"[section]\nbool= true", &conf02{sect02{true}}, true},
 	{"[section]\nbool=true ", &conf02{sect02{true}}, true},
+	{"[section]\r\nbool=true", &conf02{sect02{true}}, true},
+	// #30
+	{"[section]\r\nbool=true\r\n", &conf02{sect02{true}}, true},
+	{";cmnt\r\n[section]\r\nbool=true\r\n", &conf02{sect02{true}}, true},
 	// comments
 	{"; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
-	// #30
 	{"# cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{" ; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"\t; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
@@ -78,10 +81,10 @@ var parsetests = []struct {
 	{"\n[section] ; cmnt\nname=value", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value ; cmnt", &conf01{sect01{"value"}}, true},
+	// #40
 	{"\n[section]\nname=\"value\" ; cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=value ; \"cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=\"value ; cmnt\" ; cmnt", &conf01{sect01{"value ; cmnt"}}, true},
-	// #40
 	{"\n[section]\nname=; cmnt", &conf01{sect01{""}}, true},
 	// error: invalid line
 	{"\n[section]\n=", &conf01{}, false},
