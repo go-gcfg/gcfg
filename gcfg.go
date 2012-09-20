@@ -1,32 +1,44 @@
 // Package gcfg reads "gitconfig-like" text-based configuration files with
-// "name=value" pairs grouped into sections (gcfg files). Support for modifying
-// and/or exporting such files may be added later.
+// "name=value" pairs grouped into sections (gcfg files).
+// Support for modifying and/or exporting gcfg files may be added later.
 //
-// This package is a work in progress, and both the supported file format and
+// See Parse and the examples to get an idea of how to use it.
+//
+// This package is still a work in progress, and both the supported syntax and
 // the API is subject to change.
 //
 // The syntax is based on that used by git config:
 // http://git-scm.com/docs/git-config#_syntax .
 // Note that the gcfg syntax may diverge from that of git config in the future
-// to a limited degree. Current differences (apart from TODOs listed below) are:
+// to a limited degree.
+// Current differences (apart from TODOs listed below) are:
 //  - gcfg files must use UTF-8 encoding (for now)
-//  - include is not supported (and not planned)
+//  - include and "path" type is not supported at the package level
+//  - `[sec.sub]` format is not allowed (deprecated in gitconfig)
 //  - `[sec ""]` is not allowed
-//    - `[sec]` is the equivalent (section name "sec" and subsection name "")  
+//    - `[sec]` is the equivalent (section name "sec" and empty subsection name)
 //
 // The package may be usable for handling some of the various "INI file" formats
 // used by some programs and libraries, but achieving or maintaining
 // compatibility with any of those is not a primary concern.
 //
-// TODO: besides more docs and tests, add support for:
-//  - multi-value variables (+ internal representation)
-//  - returning error context (+ numeric error codes ?)
-//  - multiple readers (strings, files)
-//  - escaping in strings and long(er) lines (?) (+ regexp-free parser)
-//  - modifying files
-//  - exporting files (+ metadata handling) (?)
-//  - declare encoding (?)
-//  - pointer fields (other than subsection maps) (?)
+// TODO:
+//  - docs
+//    - format spec
+//  - parsing
+//    - define internal representation structure
+//    - support multi-value variables
+//    - non-regexp based parser
+//    - support escaping in strings
+//    - support multiple inputs (readers, strings, files)
+//    - support declaring encoding (?)
+//    - support pointer fields
+//  - modifying / exporting gcfg files
+//  - error handling
+//    - include error context
+//    - more helpful error messages
+//    - error types / codes?
+//    - limit input size?
 //
 package gcfg
 
@@ -53,7 +65,7 @@ var (
 )
 
 const (
-	// Default value in case a value for a variable isn't provided.
+	// Default value string in case a value for a variable isn't provided.
 	DefaultValue = "true"
 )
 
@@ -149,7 +161,39 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 }
 
 // Parse reads gcfg formatted data from reader and sets the values into the
-// corresponding fields in config. Config must be a pointer to a struct.  
+// corresponding fields in config.
+//
+// Config must be a pointer to a struct.
+// Each section corresponds to a struct field in config, and each variable in a
+// section corresponds to a data field in the section struct.
+// The field names must match that of the section or the variable, ignoring
+// case.
+// Hyphens are replaced with underscores.
+//
+// For sections with subsections, the corresponding field in config must be a
+// map, rather than a struct, with string keys and pointer-to-struct values.
+// Values for subsection variables are stored in the map with the subsection
+// name used as the map key.
+// (Note that unlike section and variable names, subsection names are case
+// sensitive.)
+// When using a map, and there is a section with the same section name but
+// without a subsection name, its values are stored with the empty string used
+// as the key.
+//
+// The section structs in the config struct may contain arbitrary types.
+// For string fields, the (unquoted and unescaped) value string is assigned to
+// the field.
+// For bool fields, the field is set to true if the value is "true", "yes", "on"
+// or "1", and set to false if the value is "false", "no", "off" or "0",
+// ignoring case.
+// For all other types, fmt.Sscanf is used to parse the value and set it to the
+// field.
+// This means that built-in Go types are parseable using the standard format,
+// and any user-defined types is parseable if it implements the fmt.Scanner
+// interface.
+//
+// See ParseString for examples.
+//
 func Parse(config interface{}, reader io.Reader) error {
 	r := bufio.NewReader(reader)
 	sect := (*string)(nil)
@@ -209,15 +253,16 @@ func Parse(config interface{}, reader io.Reader) error {
 }
 
 // ParseString reads gcfg formatted data from str and sets the values into the
-// corresponding fields in cfg. It is a wrapper for Parse(config, reader).
+// corresponding fields in config.
+// See Parse(config, reader) for the details of the parsing rules.
 func ParseString(config interface{}, str string) error {
 	r := strings.NewReader(str)
 	return Parse(config, r)
 }
 
 // ParseFile reads gcfg formatted data from the file filename and sets the
-// values into the corresponding fields in cfg. It is a wrapper for
-// Parse(config, reader).
+// values into the corresponding fields in config.
+// See Parse(config, reader) for the details of the parsing rules.
 func ParseFile(config interface{}, filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
