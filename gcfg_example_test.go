@@ -16,10 +16,27 @@ name=value # comment`
 	}{}
 	err := ParseString(&cfg, cfgStr)
 	if err != nil {
-		log.Fatalf("Failed to parse INI data: %s", err)
+		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
 	fmt.Println(cfg.Section.Name)
 	// Output: value
+}
+
+func ExampleParseString_bool() {
+	cfgStr := `; Comment line
+[section]
+switch=on`
+	cfg := struct {
+		Section struct {
+			Switch bool
+		}
+	}{}
+	err := ParseString(&cfg, cfgStr)
+	if err != nil {
+		log.Fatalf("Failed to parse gcfg data: %s", err)
+	}
+	fmt.Println(cfg.Section.Switch)
+	// Output: true
 }
 
 func ExampleParseString_subsections() {
@@ -37,7 +54,7 @@ color = black
 	}{}
 	err := ParseString(&cfg, cfgStr)
 	if err != nil {
-		log.Fatalf("Failed to parse INI data: %s", err)
+		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
 	fmt.Printf("%s %s\n", cfg.Profile["A"].Color, cfg.Profile["B"].Color)
 	// Output: white black
