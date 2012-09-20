@@ -71,7 +71,7 @@ const (
 
 type gbool bool
 
-var boolValues = map[string]interface{}{
+var gboolValues = map[string]interface{}{
 	"true": true, "yes": true, "on": true, "1": true,
 	"false": false, "no": false, "off": false, "0": false}
 
@@ -135,13 +135,16 @@ func ScanEnum(state fmt.ScanState, values map[string]interface{}, fold bool) (
 }
 
 func (b *gbool) Scan(state fmt.ScanState, verb rune) error {
-	v, err := ScanEnum(state, boolValues, true)
+	v, err := ScanEnum(state, gboolValues, true)
+	if err != nil {
+		return err
+	}
 	switch bb := v.(type) {
 	case bool:
 		*b = gbool(bb)
-		return err
+		return nil
 	}
-	return err
+	panic("never reached")
 }
 
 func fieldFold(v reflect.Value, name string) reflect.Value {
