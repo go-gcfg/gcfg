@@ -57,7 +57,7 @@ const (
 	DefaultValue = "true"
 )
 
-type Bool bool
+type gbool bool
 
 var boolValues = map[string]interface{}{
 	"true": true, "yes": true, "on": true, "1": true,
@@ -88,11 +88,11 @@ func scan(state fmt.ScanState, values map[string]interface{}) (
 	return nil, err
 }
 
-func (b *Bool) Scan(state fmt.ScanState, verb rune) error {
+func (b *gbool) Scan(state fmt.ScanState, verb rune) error {
 	v, err := scan(state, boolValues)
 	switch bb := v.(type) {
 	case bool:
-		*b = Bool(bb)
+		*b = gbool(bb)
 		return err
 	}
 	return err
@@ -130,7 +130,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		*v = value
 		return nil
 	case *bool:
-		vAddr = (*Bool)(v)
+		vAddr = (*gbool)(v)
 	}
 	// attempt to read an extra rune to make sure the value is consumed 
 	var r rune
