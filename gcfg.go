@@ -80,12 +80,9 @@ func (b *gbool) Scan(state fmt.ScanState, verb rune) error {
 	if err != nil {
 		return err
 	}
-	switch bb := v.(type) {
-	case bool:
-		*b = gbool(bb)
-		return nil
-	}
-	panic("never reached")
+	bb, _ := v.(bool) // cannot be non-bool
+	*b = gbool(bb)
+	return nil
 }
 
 func fieldFold(v reflect.Value, name string) reflect.Value {
