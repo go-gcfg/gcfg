@@ -17,6 +17,7 @@ func strEq(s1, s2 string, fold bool) bool {
 // ScanEnum is a helper function to simplify the implementation of fmt.Scanner
 // methods for "enum-like" types, that is, user-defined types where the set of
 // values and string representations is fixed.
+// ScanEnum allows multiple string representations for the same value.
 //
 // State is the state passed to the implementation of the fmt.Scanner method.
 // Values holds as map values the values of the type, with their string
@@ -28,7 +29,7 @@ func strEq(s1, s2 string, fold bool) bool {
 // and returns the corresponding value together with a nil error.
 // On no match, ScanEnum attempts to unread the last rune (the first rune that
 // could not potentially match any of the values), and returns a non-nil error,
-// togetherwith a nil value for interface{}.
+// together with a nil value for interface{}.
 // On I/O error, ScanEnum returns the I/O error, together with a nil value for
 // interface{}.
 //

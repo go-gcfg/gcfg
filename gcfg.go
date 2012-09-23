@@ -1,6 +1,6 @@
 // Package gcfg reads "gitconfig-like" text-based configuration files with
 // "name=value" pairs grouped into sections (gcfg files).
-// Support for modifying and/or exporting gcfg files may be added later.
+// Support for writing gcfg files may be added later.
 //
 // See Parse and the examples to get an idea of how to use it.
 //
@@ -11,12 +11,16 @@
 // http://git-scm.com/docs/git-config#_syntax .
 // Note that the gcfg syntax may diverge from that of git config in the future
 // to a limited degree.
-// Current differences (apart from TODOs listed below) are:
-//  - gcfg files must use UTF-8 encoding (for now)
+// Currently planned differences (apart from TODOs listed below) are:
+//  - gcfg files must use UTF-8 encoding and must not contain the 0 byte
 //  - include and "path" type is not supported at the package level
 //  - `[sec.sub]` format is not allowed (deprecated in gitconfig)
 //  - `[sec ""]` is not allowed
 //    - `[sec]` is the equivalent (section name "sec" and empty subsection name)
+//  - within a single file, definitions must be consecutive for each:
+//    - section: '[secA]' -> '[secB]' -> '[secA]' is an error
+//    - subsection: '[sec "A"]' -> '[sec "B"]' -> '[sec "A"]' is an error
+//    - multivalued variable: 'multi=a' -> 'other=x' -> 'multi=b' is an error
 //
 // The package may be usable for handling some of the various "INI file" formats
 // used by some programs and libraries, but achieving or maintaining
@@ -29,11 +33,15 @@
 //    - define internal representation structure
 //    - support multi-value variables
 //    - non-regexp based parser
+//    - support partially quoted strings
 //    - support escaping in strings
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)
 //    - support pointer fields
-//  - modifying / exporting gcfg files
+//  - ScanEnum
+//    - should use longest match (?)
+//    - support matching on unique prefix (?)
+//  - writing gcfg files
 //  - error handling
 //    - include error context
 //    - more helpful error messages
@@ -141,9 +149,10 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 // Config must be a pointer to a struct.
 // Each section corresponds to a struct field in config, and each variable in a
 // section corresponds to a data field in the section struct.
-// The field names must match that of the section or the variable, ignoring
-// case.
-// Hyphens are replaced with underscores.
+// The name of the field must match the name of the section or variable,
+// ignoring case.
+// Hyphens in variable names correspond to underscores in section or field
+// names.
 //
 // For sections with subsections, the corresponding field in config must be a
 // map, rather than a struct, with string keys and pointer-to-struct values.
