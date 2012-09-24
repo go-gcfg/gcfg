@@ -143,7 +143,7 @@ func TestReadStringInto(t *testing.T) {
 
 func TestReadFileInto(t *testing.T) {
 	res := &struct{ Section struct{ Name string } }{}
-	err := ReadFileInto(res, "gcfg_test.gcfg")
+	err := ReadFileInto(res, "testdata/gcfg_test.gcfg")
 	if err != nil {
 		t.Fatal(err)
 	}
