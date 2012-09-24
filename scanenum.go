@@ -33,7 +33,7 @@ func strEq(s1, s2 string, fold bool) bool {
 // On I/O error, ScanEnum returns the I/O error, together with a nil value for
 // interface{}.
 //
-func ScanEnum(state fmt.ScanState, values map[string]interface{}, fold bool) (
+func scanEnum(state fmt.ScanState, values map[string]interface{}, fold bool) (
 	interface{}, error) {
 	//
 	rd := make([]rune, 0, scanEnumBufferHint)

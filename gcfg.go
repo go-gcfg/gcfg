@@ -38,7 +38,7 @@
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)
 //    - support pointer fields
-//  - ScanEnum
+//  - scanEnum
 //    - should use longest match (?)
 //    - support matching on unique prefix (?)
 //  - writing gcfg files
@@ -84,7 +84,7 @@ var gboolValues = map[string]interface{}{
 	"false": false, "no": false, "off": false, "0": false}
 
 func (b *gbool) Scan(state fmt.ScanState, verb rune) error {
-	v, err := ScanEnum(state, gboolValues, true)
+	v, err := scanEnum(state, gboolValues, true)
 	if err != nil {
 		return err
 	}
