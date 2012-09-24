@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-func ExampleParseString() {
+func ExampleReadStringInto() {
 	cfgStr := `; Comment line
 [section]
 name=value # comment`
@@ -14,7 +14,7 @@ name=value # comment`
 			Name string
 		}
 	}{}
-	err := ParseString(&cfg, cfgStr)
+	err := ReadStringInto(&cfg, cfgStr)
 	if err != nil {
 		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
@@ -22,7 +22,7 @@ name=value # comment`
 	// Output: value
 }
 
-func ExampleParseString_bool() {
+func ExampleReadStringInto_bool() {
 	cfgStr := `; Comment line
 [section]
 switch=on`
@@ -31,7 +31,7 @@ switch=on`
 			Switch bool
 		}
 	}{}
-	err := ParseString(&cfg, cfgStr)
+	err := ReadStringInto(&cfg, cfgStr)
 	if err != nil {
 		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
@@ -39,7 +39,7 @@ switch=on`
 	// Output: true
 }
 
-func ExampleParseString_subsections() {
+func ExampleReadStringInto_subsections() {
 	cfgStr := `; Comment line
 [profile "A"]
 color = white
@@ -52,7 +52,7 @@ color = black
 			Color string
 		}
 	}{}
-	err := ParseString(&cfg, cfgStr)
+	err := ReadStringInto(&cfg, cfgStr)
 	if err != nil {
 		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}

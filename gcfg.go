@@ -2,7 +2,7 @@
 // "name=value" pairs grouped into sections (gcfg files).
 // Support for writing gcfg files may be added later.
 //
-// See Parse and the examples to get an idea of how to use it.
+// See ReadInto and the examples to get an idea of how to use it.
 //
 // This package is still a work in progress, and both the supported syntax and
 // the API is subject to change.
@@ -143,7 +143,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 	panic("never reached")
 }
 
-// Parse reads gcfg formatted data from reader and sets the values into the
+// ReadInto reads gcfg formatted data from reader and sets the values into the
 // corresponding fields in config.
 //
 // Config must be a pointer to a struct.
@@ -173,12 +173,12 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 // For all other types, fmt.Sscanf is used to parse the value and set it to the
 // field.
 // This means that built-in Go types are parseable using the standard format,
-// and any user-defined types is parseable if it implements the fmt.Scanner
+// and any user-defined type is parseable if it implements the fmt.Scanner
 // interface.
 //
-// See ParseString for examples.
+// See ReadStringInto for examples.
 //
-func Parse(config interface{}, reader io.Reader) error {
+func ReadInto(config interface{}, reader io.Reader) error {
 	r := bufio.NewReader(reader)
 	sect := (*string)(nil)
 	sectsub := ""
@@ -236,22 +236,24 @@ func Parse(config interface{}, reader io.Reader) error {
 	return nil
 }
 
-// ParseString reads gcfg formatted data from str and sets the values into the
-// corresponding fields in config.
-// See Parse(config, reader) for the details of the parsing rules.
-func ParseString(config interface{}, str string) error {
+// ReadStringInto reads gcfg formatted data from str and sets the values into
+// the corresponding fields in config.
+// See ReadInto(config, reader) for a detailed description of how values are
+// parsed and set into config.
+func ReadStringInto(config interface{}, str string) error {
 	r := strings.NewReader(str)
-	return Parse(config, r)
+	return ReadInto(config, r)
 }
 
-// ParseFile reads gcfg formatted data from the file filename and sets the
+// ReadFileInto reads gcfg formatted data from the file filename and sets the
 // values into the corresponding fields in config.
-// See Parse(config, reader) for the details of the parsing rules.
-func ParseFile(config interface{}, filename string) error {
+// See ReadInto(config, reader) for a detailed description of how values are
+// parsed and set into config.
+func ReadFileInto(config interface{}, filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	return Parse(config, f)
+	return ReadInto(config, f)
 }

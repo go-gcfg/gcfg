@@ -27,16 +27,16 @@ type conf03 struct{ Hyphen_In_Section sect03 }
 type sect04 struct{ Name string }
 type conf04 struct{ Sub map[string]*sect04 }
 
-type parsetest struct {
+type readtest struct {
 	gcfg string
 	exp  interface{}
 	ok   bool
 }
 
-var parsetests = []struct {
+var readtests = []struct {
 	group string
-	tests []parsetest
-}{{"basic", []parsetest{
+	tests []readtest
+}{{"basic", []readtest{
 	// string value
 	{"[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"[section]\nname=", &conf01{sect01{""}}, true},
@@ -52,7 +52,7 @@ var parsetests = []struct {
 	{"[section]\nname=\"value\"", &conf01{sect01{"value"}}, true},
 	{"[section]\nname=\" value \"", &conf01{sect01{" value "}}, true},
 	{"\n[section]\nname=\"value ; cmnt\"", &conf01{sect01{"value ; cmnt"}}, true},
-}}, {"bool", []parsetest{
+}}, {"bool", []readtest{
 	{"[section]\nbool=true", &conf02{sect02{true}}, true},
 	{"[section]\nbool=yes", &conf02{sect02{true}}, true},
 	{"[section]\nbool=on", &conf02{sect02{true}}, true},
@@ -64,7 +64,7 @@ var parsetests = []struct {
 	{"[section]\nbool=t", &conf02{}, false},
 	{"[section]\nbool=truer", &conf02{}, false},
 	{"[section]\nbool=-1", &conf02{}, false},
-}}, {"whitespace", []parsetest{
+}}, {"whitespace", []readtest{
 	{" \n[section]\nbool=true", &conf02{sect02{true}}, true},
 	{" [section]\nbool=true", &conf02{sect02{true}}, true},
 	{"\t[section]\nbool=true", &conf02{sect02{true}}, true},
@@ -77,7 +77,7 @@ var parsetests = []struct {
 	{"[section]\r\nbool=true", &conf02{sect02{true}}, true},
 	{"[section]\r\nbool=true\r\n", &conf02{sect02{true}}, true},
 	{";cmnt\r\n[section]\r\nbool=true\r\n", &conf02{sect02{true}}, true},
-}}, {"comments", []parsetest{
+}}, {"comments", []readtest{
 	{"; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{"# cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
 	{" ; cmnt\n[section]\nname=value", &conf01{sect01{"value"}}, true},
@@ -90,10 +90,10 @@ var parsetests = []struct {
 	{"\n[section]\nname=value ; \"cmnt", &conf01{sect01{"value"}}, true},
 	{"\n[section]\nname=\"value ; cmnt\" ; cmnt", &conf01{sect01{"value ; cmnt"}}, true},
 	{"\n[section]\nname=; cmnt", &conf01{sect01{""}}, true},
-}}, {"subsections", []parsetest{
+}}, {"subsections", []readtest{
 	{"\n[sub \"A\"]\nname=value", &conf04{map[string]*sect04{"A": &sect04{"value"}}}, true},
 	{"\n[sub \"b\"]\nname=value", &conf04{map[string]*sect04{"b": &sect04{"value"}}}, true},
-}}, {"errors", []parsetest{
+}}, {"errors", []readtest{
 	// error: invalid line
 	{"\n[section]\n=", &conf01{}, false},
 	// error: line too long 
@@ -108,15 +108,15 @@ var parsetests = []struct {
 }},
 }
 
-func TestParse(t *testing.T) {
-	for _, tg := range parsetests {
+func TestReadStringInto(t *testing.T) {
+	for _, tg := range readtests {
 		for i, tt := range tg.tests {
 			id := fmt.Sprintf("%s:%d", tg.group, i)
 			// get the type of the expected result 
 			restyp := reflect.TypeOf(tt.exp).Elem()
 			// create a new instance to hold the actual result
 			res := reflect.New(restyp).Interface()
-			err := ParseString(res, tt.gcfg)
+			err := ReadStringInto(res, tt.gcfg)
 			if tt.ok {
 				if err != nil {
 					t.Errorf("%s fail: got error %v, wanted ok", id, err)
@@ -141,9 +141,9 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestParseFile(t *testing.T) {
+func TestReadFileInto(t *testing.T) {
 	res := &struct{ Section struct{ Name string } }{}
-	err := ParseFile(res, "gcfg_test.gcfg")
+	err := ReadFileInto(res, "gcfg_test.gcfg")
 	if err != nil {
 		t.Fatal(err)
 	}
