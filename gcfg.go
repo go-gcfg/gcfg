@@ -74,7 +74,7 @@ var (
 
 const (
 	// Default value string in case a value for a variable isn't provided.
-	DefaultValue = "true"
+	defaultValue = "true"
 )
 
 type gbool bool
@@ -219,7 +219,7 @@ func ReadInto(config interface{}, reader io.Reader) error {
 				} else if vq != nil {
 					name, value = string(vq[1]), string(vq[2])
 				} else { // vd != nil
-					name, value = string(vd[1]), DefaultValue
+					name, value = string(vd[1]), defaultValue
 				}
 				err := set(config, *sect, sectsub, name, value)
 				if err != nil {
