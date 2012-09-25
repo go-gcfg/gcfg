@@ -9,27 +9,31 @@
 //
 // The syntax is based on that used by git config:
 // http://git-scm.com/docs/git-config#_syntax .
-// Note that the gcfg syntax may diverge from that of git config in the future
-// to a limited degree.
-// Currently planned differences (apart from TODOs listed below) are:
-//  - gcfg files must use UTF-8 encoding and must not contain the 0 byte
-//  - include and "path" type is not supported at the package level
-//  - `[sec.sub]` format is not allowed (deprecated in gitconfig)
-//  - `[sec ""]` is not allowed
-//    - `[sec]` is the equivalent (section name "sec" and empty subsection name)
-//  - within a single file, definitions must be consecutive for each:
-//    - section: '[secA]' -> '[secB]' -> '[secA]' is an error
-//    - subsection: '[sec "A"]' -> '[sec "B"]' -> '[sec "A"]' is an error
-//    - multivalued variable: 'multi=a' -> 'other=x' -> 'multi=b' is an error
+// There are some (planned) differences compared to the git config format:
+//  - improve data portability:
+//    - must be encoded in UTF-8 (for now) and must not contain the 0 byte
+//    - include and "path" type is not supported
+//      (path type may be implementable as a user-defined type)
+//  - disallow potentially ambiguous or misleading definitions:
+//    - `[sec.sub]` format is not allowed (deprecated in gitconfig)
+//    - `[sec ""]` is not allowed
+//      - use `[sec]` for section name "sec" and empty subsection name
+//    - within a single file, definitions must be consecutive for each:
+//      - section: '[secA]' -> '[secB]' -> '[secA]' is an error
+//      - subsection: '[sec "A"]' -> '[sec "B"]' -> '[sec "A"]' is an error
+//      - multivalued variable: 'multi=a' -> 'other=x' -> 'multi=b' is an error
 //
 // The package may be usable for handling some of the various "INI file" formats
 // used by some programs and libraries, but achieving or maintaining
 // compatibility with any of those is not a primary concern.
 //
 // TODO:
-//  - docs
-//    - format spec
-//  - parsing
+//  - format
+//    - explain "why gcfg"
+//    - define valid section and variable names
+//    - define handling of default value
+//    - complete syntax documentation
+//  - reading
 //    - define internal representation structure
 //    - support multi-value variables
 //    - non-regexp based parser
@@ -38,15 +42,18 @@
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)
 //    - support pointer fields
+//    - support varying fields sets for subsections (?)
 //  - scanEnum
 //    - should use longest match (?)
 //    - support matching on unique prefix (?)
 //  - writing gcfg files
 //  - error handling
 //    - include error context
+//    - avoid reflection-related panics
 //    - more helpful error messages
 //    - error types / codes?
 //    - limit input size?
+//  - move TODOs to issue tracker (eventually)
 //
 package gcfg
 
@@ -175,6 +182,8 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 // This means that built-in Go types are parseable using the standard format,
 // and any user-defined type is parseable if it implements the fmt.Scanner
 // interface.
+// Note that the value is considered invalid unless fmt.Scanner fully consumes
+// the value string without error.
 //
 // See ReadStringInto for examples.
 //
@@ -238,8 +247,8 @@ func ReadInto(config interface{}, reader io.Reader) error {
 
 // ReadStringInto reads gcfg formatted data from str and sets the values into
 // the corresponding fields in config.
-// See ReadInto(config, reader) for a detailed description of how values are
-// parsed and set into config.
+// ReadStringInfo is a wrapper for ReadInfo; see ReadInto(config, reader) for
+// detailed description of how data is read and set into config.
 func ReadStringInto(config interface{}, str string) error {
 	r := strings.NewReader(str)
 	return ReadInto(config, r)
@@ -247,8 +256,8 @@ func ReadStringInto(config interface{}, str string) error {
 
 // ReadFileInto reads gcfg formatted data from the file filename and sets the
 // values into the corresponding fields in config.
-// See ReadInto(config, reader) for a detailed description of how values are
-// parsed and set into config.
+// ReadFileInto is a wrapper for ReadInfo; see ReadInto(config, reader) for
+// detailed description of how data is read and set into config.
 func ReadFileInto(config interface{}, filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
