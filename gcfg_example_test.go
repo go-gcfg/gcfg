@@ -1,9 +1,11 @@
-package gcfg
+package gcfg_test
 
 import (
 	"fmt"
 	"log"
 )
+
+import "code.google.com/p/gcfg"
 
 func ExampleReadStringInto() {
 	cfgStr := `; Comment line
@@ -14,7 +16,7 @@ name=value # comment`
 			Name string
 		}
 	}{}
-	err := ReadStringInto(&cfg, cfgStr)
+	err := gcfg.ReadStringInto(&cfg, cfgStr)
 	if err != nil {
 		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
@@ -31,7 +33,7 @@ switch=on`
 			Switch bool
 		}
 	}{}
-	err := ReadStringInto(&cfg, cfgStr)
+	err := gcfg.ReadStringInto(&cfg, cfgStr)
 	if err != nil {
 		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
@@ -52,7 +54,7 @@ color = black
 			Color string
 		}
 	}{}
-	err := ReadStringInto(&cfg, cfgStr)
+	err := gcfg.ReadStringInto(&cfg, cfgStr)
 	if err != nil {
 		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
