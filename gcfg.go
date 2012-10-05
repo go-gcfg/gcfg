@@ -110,7 +110,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 	vDest := reflect.ValueOf(cfg).Elem()
 	vSect := fieldFold(vDest, sect)
 	if !vSect.IsValid() {
-		return fmt.Errorf("no corresponding field: section %q", sect)
+		return fmt.Errorf("invalid section: section %q", sect)
 	}
 	if vSect.Kind() == reflect.Map {
 		if vSect.IsNil() {
@@ -125,12 +125,13 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		}
 		vSect = pv.Elem()
 	} else if sub != "" {
-		return fmt.Errorf("corresponding field should be a map: "+
+		return fmt.Errorf("invalid subsection: "+
 			"section %q subsection %q", sect, sub)
 	}
 	vName := fieldFold(vSect, name)
 	if !vName.IsValid() {
-		return fmt.Errorf("no corresponding field: name %q", name)
+		return fmt.Errorf("invalid variable: "+
+			"section %q subsection %q variable %q", sect, sub, name)
 	}
 	vAddr := vName.Addr().Interface()
 	switch v := vAddr.(type) {

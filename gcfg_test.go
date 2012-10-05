@@ -106,6 +106,8 @@ var readtests = []struct {
 	{"\n[sub \"\"]\nname=value", &conf04{}, false},
 	// error: section name not matched
 	{"\n[nonexistent]\nname=value", &conf01{}, false},
+	// error: subsection name not matched
+	{"\n[section \"nonexistent\"]\nname=value", &conf01{}, false},
 	// error: variable name not matched
 	{"\n[section]\nnonexistent=value", &conf01{}, false},
 }},
