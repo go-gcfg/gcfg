@@ -49,7 +49,6 @@
 //  - writing gcfg files
 //  - error handling
 //    - include error context
-//    - avoid reflection-related panics
 //    - more helpful error messages
 //    - error types / codes?
 //    - limit input size?
@@ -110,6 +109,9 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 func set(cfg interface{}, sect, sub, name, value string) error {
 	vDest := reflect.ValueOf(cfg).Elem()
 	vSect := fieldFold(vDest, sect)
+	if !vSect.IsValid() {
+		return fmt.Errorf("no corresponding field: section %q", sect)
+	}
 	if vSect.Kind() == reflect.Map {
 		if vSect.IsNil() {
 			vSect.Set(reflect.MakeMap(vSect.Type()))
@@ -123,9 +125,13 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		}
 		vSect = pv.Elem()
 	} else if sub != "" {
-		return fmt.Errorf("expected map; section %q subsection %q", sect, sub)
+		return fmt.Errorf("corresponding field should be a map: "+
+			"section %q subsection %q", sect, sub)
 	}
 	vName := fieldFold(vSect, name)
+	if !vName.IsValid() {
+		return fmt.Errorf("no corresponding field: name %q", name)
+	}
 	vAddr := vName.Addr().Interface()
 	switch v := vAddr.(type) {
 	case *string:

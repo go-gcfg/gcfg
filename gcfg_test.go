@@ -98,13 +98,16 @@ var readtests = []struct {
 	{"\n[section]\n=", &conf01{}, false},
 	// error: line too long 
 	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
-	// #50
 	// error: no section
 	{"name=value", &conf01{}, false},
 	// error: failed to parse
 	{"\n[section]\nbool=maybe", &conf02{sect02{}}, false},
 	// error: empty subsection
 	{"\n[sub \"\"]\nname=value", &conf04{}, false},
+	// error: section name not matched
+	{"\n[nonexistent]\nname=value", &conf01{}, false},
+	// error: variable name not matched
+	{"\n[section]\nnonexistent=value", &conf01{}, false},
 }},
 }
 
