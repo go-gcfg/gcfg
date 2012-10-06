@@ -2,7 +2,6 @@ package gcfg
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -35,14 +34,25 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 }
 
 func set(cfg interface{}, sect, sub, name, value string) error {
-	vDest := reflect.ValueOf(cfg).Elem()
-	vSect := fieldFold(vDest, sect)
+	vPCfg := reflect.ValueOf(cfg)
+	if vPCfg.Kind() != reflect.Ptr || vPCfg.Elem().Kind() != reflect.Struct {
+		panic(fmt.Errorf("config must be a pointer to a struct"))
+	}
+	vCfg := vPCfg.Elem()
+	vSect := fieldFold(vCfg, sect)
 	if !vSect.IsValid() {
 		return fmt.Errorf("invalid section: section %q", sect)
 	}
 	if vSect.Kind() == reflect.Map {
+		vst := vSect.Type()
+		if vst.Key().Kind() != reflect.String ||
+			vst.Elem().Kind() != reflect.Ptr ||
+			vst.Elem().Elem().Kind() != reflect.Struct {
+			panic(fmt.Errorf("map field for section must have string keys and "+
+				" pointer-to-struct values: section %q", sect))
+		}
 		if vSect.IsNil() {
-			vSect.Set(reflect.MakeMap(vSect.Type()))
+			vSect.Set(reflect.MakeMap(vst))
 		}
 		k := reflect.ValueOf(sub)
 		pv := vSect.MapIndex(k)
@@ -52,6 +62,9 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 			vSect.SetMapIndex(k, pv)
 		}
 		vSect = pv.Elem()
+	} else if vSect.Kind() != reflect.Struct {
+		panic(fmt.Errorf("field for section must be a map or a struct: "+
+			"section %q", sect))
 	} else if sub != "" {
 		return fmt.Errorf("invalid subsection: "+
 			"section %q subsection %q", sect, sub)
@@ -120,6 +133,10 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 // Note that the value is considered invalid unless fmt.Scanner fully consumes
 // the value string without error.
 //
+// ReadInto panics if config is not a pointer to a struct, or if it encounters a
+// field that is not of a suitable type (either a struct or a map with string
+// keys and pointer-to-struct values).
+//
 // See ReadStringInto for examples.
 //
 func ReadInto(config interface{}, reader io.Reader) error {
@@ -131,7 +148,7 @@ func ReadInto(config interface{}, reader io.Reader) error {
 		if err != nil && err != io.EOF {
 			return err
 		} else if pre {
-			return errors.New("line too long")
+			return fmt.Errorf("line too long")
 		}
 		// exclude comments
 		if c := reCmnt.FindSubmatch(l); c != nil {
@@ -148,14 +165,15 @@ func ReadInto(config interface{}, reader io.Reader) error {
 				strsec := string(sec[1])
 				strsub := string(sec[2])
 				if strsub == "" {
-					return errors.New("empty subsection not allowed")
+					return fmt.Errorf("subsection name \"\" not allowed; " +
+						"use [section-name] for blank subsection name")
 				}
 				sect, sectsub = &strsec, strsub
 			} else if v, vq, vd := reVar.FindSubmatch(l),
 				reVarQ.FindSubmatch(l), reVarDflt.FindSubmatch(l); //
 			v != nil || vq != nil || vd != nil {
 				if sect == nil {
-					return errors.New("no section")
+					return fmt.Errorf("variable must be defined in a section")
 				}
 				var name, value string
 				if v != nil {
