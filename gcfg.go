@@ -165,7 +165,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 // section corresponds to a data field in the section struct.
 // The name of the field must match the name of the section or variable,
 // ignoring case.
-// Hyphens in variable names correspond to underscores in section or field
+// Hyphens in section and variable names correspond to underscores in field
 // names.
 //
 // For sections with subsections, the corresponding field in config must be a
