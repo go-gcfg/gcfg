@@ -18,7 +18,7 @@
 //    - `[sec.sub]` format is not allowed (deprecated in gitconfig)
 //    - `[sec ""]` is not allowed
 //      - use `[sec]` for section name "sec" and empty subsection name
-//    - within a single file, definitions must be consecutive for each:
+//    - (planned) within a single file, definitions must be contiguous for each:
 //      - section: '[secA]' -> '[secB]' -> '[secA]' is an error
 //      - subsection: '[sec "A"]' -> '[sec "B"]' -> '[sec "A"]' is an error
 //      - multivalued variable: 'multi=a' -> 'other=x' -> 'multi=b' is an error
@@ -29,7 +29,6 @@
 //
 // TODO:
 //  - format
-//    - explain "why gcfg"
 //    - define valid section and variable names
 //    - define handling of default value
 //    - complete syntax documentation

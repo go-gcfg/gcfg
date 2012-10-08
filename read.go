@@ -125,8 +125,8 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 // For bool fields, the field is set to true if the value is "true", "yes", "on"
 // or "1", and set to false if the value is "false", "no", "off" or "0",
 // ignoring case.
-// For all other types, fmt.Sscanf is used to parse the value and set it to the
-// field.
+// For all other types, fmt.Sscanf with the verb "%v" is used to parse the value
+// string and set it to the field.
 // This means that built-in Go types are parseable using the standard format,
 // and any user-defined type is parseable if it implements the fmt.Scanner
 // interface.
