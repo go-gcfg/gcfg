@@ -143,12 +143,20 @@ func ReadInto(config interface{}, reader io.Reader) error {
 	r := bufio.NewReader(reader)
 	sect := (*string)(nil)
 	sectsub := ""
+	lp := []byte{}
 	for line := 1; true; line++ {
 		l, pre, err := r.ReadLine()
 		if err != nil && err != io.EOF {
 			return err
-		} else if pre {
-			return fmt.Errorf("line too long")
+		}
+		if pre {
+			lp = append(lp, l...)
+			line--
+			continue
+		}
+		if len(l) > 0 {
+			l = append(lp, l...)
+			lp = []byte{}
 		}
 		// exclude comments
 		if c := reCmnt.FindSubmatch(l); c != nil {

@@ -52,6 +52,15 @@ var readtests = []struct {
 	{"[section]\nname=\"value\"", &conf01{sect01{"value"}}, true},
 	{"[section]\nname=\" value \"", &conf01{sect01{" value "}}, true},
 	{"\n[section]\nname=\"value ; cmnt\"", &conf01{sect01{"value ; cmnt"}}, true},
+	// long lines
+	{sp4096 + "[section]\nname=value\n", &conf01{sect01{"value"}}, true},
+	{"[" + sp4096 + "section]\nname=value\n", &conf01{sect01{"value"}}, true},
+	{"[section" + sp4096 + "]\nname=value\n", &conf01{sect01{"value"}}, true},
+	{"[section]" + sp4096 + "\nname=value\n", &conf01{sect01{"value"}}, true},
+	{"[section]\n" + sp4096 + "name=value\n", &conf01{sect01{"value"}}, true},
+	{"[section]\nname" + sp4096 + "=value\n", &conf01{sect01{"value"}}, true},
+	{"[section]\nname=" + sp4096 + "value\n", &conf01{sect01{"value"}}, true},
+	{"[section]\nname=value\n" + sp4096, &conf01{sect01{"value"}}, true},
 }}, {"bool", []readtest{
 	{"[section]\nbool=true", &conf02{sect02{true}}, true},
 	{"[section]\nbool=yes", &conf02{sect02{true}}, true},
@@ -96,8 +105,6 @@ var readtests = []struct {
 }}, {"errors", []readtest{
 	// error: invalid line
 	{"\n[section]\n=", &conf01{}, false},
-	// error: line too long 
-	{"[section]\nname=value\n" + sp4096, &conf01{}, false},
 	// error: no section
 	{"name=value", &conf01{}, false},
 	// error: failed to parse
