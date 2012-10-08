@@ -109,6 +109,8 @@ var readtests = []struct {
 	{"name=value", &conf01{}, false},
 	// error: failed to parse
 	{"\n[section]\nbool=maybe", &conf02{sect02{}}, false},
+	// error: empty section
+	{"\n[]\nname=value", &conf01{}, false},
 	// error: empty subsection
 	{"\n[sub \"\"]\nname=value", &conf04{}, false},
 	// error: section name not matched

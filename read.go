@@ -141,8 +141,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 //
 func ReadInto(config interface{}, reader io.Reader) error {
 	r := bufio.NewReader(reader)
-	sect := (*string)(nil)
-	sectsub := ""
+	sect, sectsub := "", ""
 	lp := []byte{}
 	for line := 1; true; line++ {
 		l, pre, err := r.ReadLine()
@@ -166,21 +165,26 @@ func ReadInto(config interface{}, reader io.Reader) error {
 		}
 		if !reBlank.Match(l) {
 			// "switch" based on line contents
-			if sec := reSect.FindSubmatch(l); sec != nil {
-				strsec := string(sec[1])
-				sect, sectsub = &strsec, ""
-			} else if sec := reSectSub.FindSubmatch(l); sec != nil {
-				strsec := string(sec[1])
-				strsub := string(sec[2])
-				if strsub == "" {
+			if s, ss := reSect.FindSubmatch(l), reSectSub.FindSubmatch(l); //
+			s != nil || ss != nil {
+				// section
+				if s != nil {
+					sect, sectsub = string(s[1]), ""
+				} else { // ss != nil
+					sect, sectsub = string(ss[1]), string(ss[2])
+				}
+				if sect == "" {
+					return fmt.Errorf("empty section name not allowed")
+				}
+				if ss != nil && sectsub == "" {
 					return fmt.Errorf("subsection name \"\" not allowed; " +
 						"use [section-name] for blank subsection name")
 				}
-				sect, sectsub = &strsec, strsub
 			} else if v, vq, vd := reVar.FindSubmatch(l),
 				reVarQ.FindSubmatch(l), reVarDflt.FindSubmatch(l); //
 			v != nil || vq != nil || vd != nil {
-				if sect == nil {
+				// variable
+				if sect == "" {
 					return fmt.Errorf("variable must be defined in a section")
 				}
 				var name, value string
@@ -191,7 +195,7 @@ func ReadInto(config interface{}, reader io.Reader) error {
 				} else { // vd != nil
 					name, value = string(vd[1]), defaultValue
 				}
-				err := set(config, *sect, sectsub, name, value)
+				err := set(config, sect, sectsub, name, value)
 				if err != nil {
 					return err
 				}
