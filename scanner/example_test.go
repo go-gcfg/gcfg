@@ -15,7 +15,8 @@ import (
 
 func ExampleScanner_Scan() {
 	// src is the input that we want to tokenize.
-	src := []byte("cos(x) + 1i*sin(x) // Euler")
+	src := []byte(`[profile "A"]
+color = blue ; Comment`)
 
 	// Initialize the scanner.
 	var s scanner.Scanner
@@ -33,17 +34,13 @@ func ExampleScanner_Scan() {
 	}
 
 	// output:
-	// 1:1	IDENT	"cos"
-	// 1:4	(	""
-	// 1:5	IDENT	"x"
-	// 1:6	)	""
-	// 1:8	+	""
-	// 1:10	IMAG	"1i"
-	// 1:12	*	""
-	// 1:13	IDENT	"sin"
-	// 1:16	(	""
-	// 1:17	IDENT	"x"
-	// 1:18	)	""
-	// 1:20	;	"\n"
-	// 1:20	COMMENT	"// Euler"
+	// 1:1	[	""
+	// 1:2	IDENT	"profile"
+	// 1:10	STRING	"\"A\""
+	// 1:13	]	""
+	// 1:14	EOL	""
+	// 2:1	IDENT	"color"
+	// 2:7	=	""
+	// 2:9	STRING	"blue"
+	// 2:14	COMMENT	"; Comment"
 }
