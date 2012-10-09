@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package token defines constants representing the lexical tokens of the Go
-// programming language and basic operations on tokens (printing, predicates).
+// Package token defines constants representing the lexical tokens of the gcfg
+// configuration syntax and basic operations on tokens (printing, predicates).
 //
 package token
 
 import "strconv"
 
-// Token is the set of lexical tokens of the Go programming language.
+// Token is the set of lexical tokens of the gcfg configuration syntax.
 type Token int
 
 // The list of tokens.
@@ -23,8 +23,8 @@ const (
 	literal_beg
 	// Identifiers and basic type literals
 	// (these tokens stand for classes of literals)
-	IDENT  // main
-	STRING // "abc"
+	IDENT  // section-name, variable-name
+	STRING // "subsection-name", variable value
 	literal_end
 
 	operator_beg
@@ -51,10 +51,10 @@ var tokens = [...]string{
 }
 
 // String returns the string corresponding to the token tok.
-// For operators, delimiters, and keywords the string is the actual
-// token character sequence (e.g., for the token ADD, the string is
-// "+"). For all other tokens the string corresponds to the token
-// constant name (e.g. for the token IDENT, the string is "IDENT").
+// For operators and delimiters, the string is the actual token character
+// sequence (e.g., for the token ASSIGN, the string is "="). For all other
+// tokens the string corresponds to the token constant name (e.g. for the
+// token IDENT, the string is "IDENT").
 //
 func (tok Token) String() string {
 	s := ""
