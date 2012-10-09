@@ -251,97 +251,6 @@ func (s *Scanner) scanIdentifier() string {
 	return string(s.src[offs:s.offset])
 }
 
-func digitVal(ch rune) int {
-	switch {
-	case '0' <= ch && ch <= '9':
-		return int(ch - '0')
-	case 'a' <= ch && ch <= 'f':
-		return int(ch - 'a' + 10)
-	case 'A' <= ch && ch <= 'F':
-		return int(ch - 'A' + 10)
-	}
-	return 16 // larger than any legal digit val
-}
-
-func (s *Scanner) scanMantissa(base int) {
-	for digitVal(s.ch) < base {
-		s.next()
-	}
-}
-
-func (s *Scanner) scanNumber(seenDecimalPoint bool) (token.Token, string) {
-	// digitVal(s.ch) < 10
-	offs := s.offset
-	tok := token.INT
-
-	if seenDecimalPoint {
-		offs--
-		tok = token.FLOAT
-		s.scanMantissa(10)
-		goto exponent
-	}
-
-	if s.ch == '0' {
-		// int or float
-		offs := s.offset
-		s.next()
-		if s.ch == 'x' || s.ch == 'X' {
-			// hexadecimal int
-			s.next()
-			s.scanMantissa(16)
-			if s.offset-offs <= 2 {
-				// only scanned "0x" or "0X"
-				s.error(offs, "illegal hexadecimal number")
-			}
-		} else {
-			// octal int or float
-			seenDecimalDigit := false
-			s.scanMantissa(8)
-			if s.ch == '8' || s.ch == '9' {
-				// illegal octal int or float
-				seenDecimalDigit = true
-				s.scanMantissa(10)
-			}
-			if s.ch == '.' || s.ch == 'e' || s.ch == 'E' || s.ch == 'i' {
-				goto fraction
-			}
-			// octal int
-			if seenDecimalDigit {
-				s.error(offs, "illegal octal number")
-			}
-		}
-		goto exit
-	}
-
-	// decimal int or float
-	s.scanMantissa(10)
-
-fraction:
-	if s.ch == '.' {
-		tok = token.FLOAT
-		s.next()
-		s.scanMantissa(10)
-	}
-
-exponent:
-	if s.ch == 'e' || s.ch == 'E' {
-		tok = token.FLOAT
-		s.next()
-		if s.ch == '-' || s.ch == '+' {
-			s.next()
-		}
-		s.scanMantissa(10)
-	}
-
-	if s.ch == 'i' {
-		tok = token.IMAG
-		s.next()
-	}
-
-exit:
-	return tok, string(s.src[offs:s.offset])
-}
-
 func (s *Scanner) scanEscape(quote rune) {
 	offs := s.offset
 
@@ -350,40 +259,10 @@ func (s *Scanner) scanEscape(quote rune) {
 	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', quote:
 		s.next()
 		return
-	case '0', '1', '2', '3', '4', '5', '6', '7':
-		i, base, max = 3, 8, 255
-	case 'x':
-		s.next()
-		i, base, max = 2, 16, 255
-	case 'u':
-		s.next()
-		i, base, max = 4, 16, unicode.MaxRune
-	case 'U':
-		s.next()
-		i, base, max = 8, 16, unicode.MaxRune
-	default:
-		s.next() // always make progress
-		s.error(offs, "unknown escape sequence")
-		return
 	}
-
-	var x uint32
-	for ; i > 0 && s.ch != quote && s.ch >= 0; i-- {
-		d := uint32(digitVal(s.ch))
-		if d >= base {
-			s.error(s.offset, "illegal character in escape sequence")
-			break
-		}
-		x = x*base + d
-		s.next()
-	}
-	// in case of an error, consume remaining chars
-	for ; i > 0 && s.ch != quote && s.ch >= 0; i-- {
-		s.next()
-	}
-	if x > max || 0xd800 <= x && x < 0xe000 {
-		s.error(offs, "escape sequence is invalid Unicode code point")
-	}
+	s.next() // always make progress
+	s.error(offs, "unknown escape sequence")
+	return
 }
 
 func (s *Scanner) scanChar() string {
@@ -563,14 +442,8 @@ scanAgain:
 	switch ch := s.ch; {
 	case isLetter(ch):
 		lit = s.scanIdentifier()
-		tok = token.Lookup(lit)
-		switch tok {
-		case token.IDENT, token.BREAK, token.CONTINUE, token.FALLTHROUGH, token.RETURN:
-			insertSemi = true
-		}
-	case digitVal(ch) < 10:
+		tok = token.IDENT // TODO string
 		insertSemi = true
-		tok, lit = s.scanNumber(false)
 	default:
 		s.next() // always make progress
 		switch ch {
