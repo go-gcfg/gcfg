@@ -21,7 +21,6 @@ const /* class */ (
 	special = iota
 	literal
 	operator
-	keyword
 )
 
 func tokenclass(tok token.Token) int {
@@ -30,8 +29,6 @@ func tokenclass(tok token.Token) int {
 		return literal
 	case tok.IsOperator():
 		return operator
-	case tok.IsKeyword():
-		return keyword
 	}
 	return special
 }
@@ -52,34 +49,6 @@ var tokens = [...]elt{
 	{token.IDENT, "a۰۱۸", literal},
 	{token.IDENT, "foo६४", literal},
 	{token.IDENT, "bar９８７６", literal},
-	{token.INT, "0", literal},
-	{token.INT, "1", literal},
-	{token.INT, "123456789012345678890", literal},
-	{token.INT, "01234567", literal},
-	{token.INT, "0xcafebabe", literal},
-	{token.FLOAT, "0.", literal},
-	{token.FLOAT, ".0", literal},
-	{token.FLOAT, "3.14159265", literal},
-	{token.FLOAT, "1e0", literal},
-	{token.FLOAT, "1e+100", literal},
-	{token.FLOAT, "1e-100", literal},
-	{token.FLOAT, "2.71828e-1000", literal},
-	{token.IMAG, "0i", literal},
-	{token.IMAG, "1i", literal},
-	{token.IMAG, "012345678901234567889i", literal},
-	{token.IMAG, "123456789012345678890i", literal},
-	{token.IMAG, "0.i", literal},
-	{token.IMAG, ".0i", literal},
-	{token.IMAG, "3.14159265i", literal},
-	{token.IMAG, "1e0i", literal},
-	{token.IMAG, "1e+100i", literal},
-	{token.IMAG, "1e-100i", literal},
-	{token.IMAG, "2.71828e-1000i", literal},
-	{token.CHAR, "'a'", literal},
-	{token.CHAR, "'\\000'", literal},
-	{token.CHAR, "'\\xFF'", literal},
-	{token.CHAR, "'\\uff16'", literal},
-	{token.CHAR, "'\\U0000ff16'", literal},
 	{token.STRING, "`foobar`", literal},
 	{token.STRING, "`" + `foo
 	                        bar` +
@@ -90,92 +59,9 @@ var tokens = [...]elt{
 	{token.STRING, "`foo\r\nbar`", literal},
 
 	// Operators and delimiters
-	{token.ADD, "+", operator},
-	{token.SUB, "-", operator},
-	{token.MUL, "*", operator},
-	{token.QUO, "/", operator},
-	{token.REM, "%", operator},
-
-	{token.AND, "&", operator},
-	{token.OR, "|", operator},
-	{token.XOR, "^", operator},
-	{token.SHL, "<<", operator},
-	{token.SHR, ">>", operator},
-	{token.AND_NOT, "&^", operator},
-
-	{token.ADD_ASSIGN, "+=", operator},
-	{token.SUB_ASSIGN, "-=", operator},
-	{token.MUL_ASSIGN, "*=", operator},
-	{token.QUO_ASSIGN, "/=", operator},
-	{token.REM_ASSIGN, "%=", operator},
-
-	{token.AND_ASSIGN, "&=", operator},
-	{token.OR_ASSIGN, "|=", operator},
-	{token.XOR_ASSIGN, "^=", operator},
-	{token.SHL_ASSIGN, "<<=", operator},
-	{token.SHR_ASSIGN, ">>=", operator},
-	{token.AND_NOT_ASSIGN, "&^=", operator},
-
-	{token.LAND, "&&", operator},
-	{token.LOR, "||", operator},
-	{token.ARROW, "<-", operator},
-	{token.INC, "++", operator},
-	{token.DEC, "--", operator},
-
-	{token.EQL, "==", operator},
-	{token.LSS, "<", operator},
-	{token.GTR, ">", operator},
 	{token.ASSIGN, "=", operator},
-	{token.NOT, "!", operator},
-
-	{token.NEQ, "!=", operator},
-	{token.LEQ, "<=", operator},
-	{token.GEQ, ">=", operator},
-	{token.DEFINE, ":=", operator},
-	{token.ELLIPSIS, "...", operator},
-
-	{token.LPAREN, "(", operator},
 	{token.LBRACK, "[", operator},
-	{token.LBRACE, "{", operator},
-	{token.COMMA, ",", operator},
-	{token.PERIOD, ".", operator},
-
-	{token.RPAREN, ")", operator},
 	{token.RBRACK, "]", operator},
-	{token.RBRACE, "}", operator},
-	{token.SEMICOLON, ";", operator},
-	{token.COLON, ":", operator},
-
-	// Keywords
-	{token.BREAK, "break", keyword},
-	{token.CASE, "case", keyword},
-	{token.CHAN, "chan", keyword},
-	{token.CONST, "const", keyword},
-	{token.CONTINUE, "continue", keyword},
-
-	{token.DEFAULT, "default", keyword},
-	{token.DEFER, "defer", keyword},
-	{token.ELSE, "else", keyword},
-	{token.FALLTHROUGH, "fallthrough", keyword},
-	{token.FOR, "for", keyword},
-
-	{token.FUNC, "func", keyword},
-	{token.GO, "go", keyword},
-	{token.GOTO, "goto", keyword},
-	{token.IF, "if", keyword},
-	{token.IMPORT, "import", keyword},
-
-	{token.INTERFACE, "interface", keyword},
-	{token.MAP, "map", keyword},
-	{token.PACKAGE, "package", keyword},
-	{token.RANGE, "range", keyword},
-	{token.RETURN, "return", keyword},
-
-	{token.SELECT, "select", keyword},
-	{token.STRUCT, "struct", keyword},
-	{token.SWITCH, "switch", keyword},
-	{token.TYPE, "type", keyword},
-	{token.VAR, "var", keyword},
 }
 
 const whitespace = "  \t  \n\n\n" // to separate tokens
@@ -228,7 +114,7 @@ func TestScan(t *testing.T) {
 
 	// verify scan
 	var s Scanner
-	s.Init(fset.AddFile("", fset.Base(), len(source)), source, eh, ScanComments|dontInsertSemis)
+	s.Init(fset.AddFile("", fset.Base(), len(source)), source, eh, ScanComments)
 	index := 0
 	// epos is the expected position
 	epos := token.Position{
@@ -284,39 +170,6 @@ func TestScan(t *testing.T) {
 	}
 	if s.ErrorCount != 0 {
 		t.Errorf("found %d errors", s.ErrorCount)
-	}
-}
-
-func checkSemi(t *testing.T, line string, mode Mode) {
-	var S Scanner
-	file := fset.AddFile("TestSemis", fset.Base(), len(line))
-	S.Init(file, []byte(line), nil, mode)
-	pos, tok, lit := S.Scan()
-	for tok != token.EOF {
-		if tok == token.ILLEGAL {
-			// the illegal token literal indicates what
-			// kind of semicolon literal to expect
-			semiLit := "\n"
-			if lit[0] == '#' {
-				semiLit = ";"
-			}
-			// next token must be a semicolon
-			semiPos := file.Position(pos)
-			semiPos.Offset++
-			semiPos.Column++
-			pos, tok, lit = S.Scan()
-			if tok == token.SEMICOLON {
-				if lit != semiLit {
-					t.Errorf(`bad literal for %q: got %q, expected %q`, line, lit, semiLit)
-				}
-				checkPos(t, line, pos, semiPos)
-			} else {
-				t.Errorf("bad token for %q: got %s, expected ;", line, tok)
-			}
-		} else if tok == token.SEMICOLON {
-			t.Errorf("bad token for %q: got ;, expected no ;", line)
-		}
-		pos, tok, lit = S.Scan()
 	}
 }
 
@@ -443,20 +296,6 @@ var lines = []string{
 	"package main$",
 }
 
-func TestSemis(t *testing.T) {
-	for _, line := range lines {
-		checkSemi(t, line, 0)
-		checkSemi(t, line, ScanComments)
-
-		// if the input ended in newlines, the input must tokenize the
-		// same with or without those newlines
-		for i := len(line) - 1; i >= 0 && line[i] == '\n'; i-- {
-			checkSemi(t, line[0:i], 0)
-			checkSemi(t, line[0:i], ScanComments)
-		}
-	}
-}
-
 type segment struct {
 	srcline  string // a line of source text
 	filename string // filename for current token
@@ -507,7 +346,7 @@ func TestLineComments(t *testing.T) {
 	// verify scan
 	var S Scanner
 	file := fset.AddFile(filepath.Join("dir", "TestLineComments"), fset.Base(), len(src))
-	S.Init(file, []byte(src), nil, dontInsertSemis)
+	S.Init(file, []byte(src), nil, 0)
 	for _, s := range segs {
 		p, _, lit := S.Scan()
 		pos := file.Position(p)
@@ -529,29 +368,29 @@ func TestInit(t *testing.T) {
 	var s Scanner
 
 	// 1st init
-	src1 := "if true { }"
+	src1 := "\nname = value"
 	f1 := fset.AddFile("src1", fset.Base(), len(src1))
-	s.Init(f1, []byte(src1), nil, dontInsertSemis)
+	s.Init(f1, []byte(src1), nil, 0)
 	if f1.Size() != len(src1) {
 		t.Errorf("bad file size: got %d, expected %d", f1.Size(), len(src1))
 	}
-	s.Scan()              // if
-	s.Scan()              // true
-	_, tok, _ := s.Scan() // {
-	if tok != token.LBRACE {
-		t.Errorf("bad token: got %s, expected %s", tok, token.LBRACE)
+	s.Scan()              // \n
+	s.Scan()              // name
+	_, tok, _ := s.Scan() // =
+	if tok != token.ASSIGN {
+		t.Errorf("bad token: got %s, expected %s", tok, token.ASSIGN)
 	}
 
 	// 2nd init
-	src2 := "go true { ]"
+	src2 := "[section]"
 	f2 := fset.AddFile("src2", fset.Base(), len(src2))
-	s.Init(f2, []byte(src2), nil, dontInsertSemis)
+	s.Init(f2, []byte(src2), nil, 0)
 	if f2.Size() != len(src2) {
 		t.Errorf("bad file size: got %d, expected %d", f2.Size(), len(src2))
 	}
-	_, tok, _ = s.Scan() // go
-	if tok != token.GO {
-		t.Errorf("bad token: got %s, expected %s", tok, token.GO)
+	_, tok, _ = s.Scan() // [
+	if tok != token.LBRACK {
+		t.Errorf("bad token: got %s, expected %s", tok, token.LBRACK)
 	}
 
 	if s.ErrorCount != 0 {
@@ -573,7 +412,7 @@ func TestStdErrorHander(t *testing.T) {
 	eh := func(pos token.Position, msg string) { list.Add(pos, msg) }
 
 	var s Scanner
-	s.Init(fset.AddFile("File1", fset.Base(), len(src)), []byte(src), eh, dontInsertSemis)
+	s.Init(fset.AddFile("File1", fset.Base(), len(src)), []byte(src), eh, 0)
 	for {
 		if _, tok, _ := s.Scan(); tok == token.EOF {
 			break
@@ -616,7 +455,7 @@ func checkError(t *testing.T, src string, tok token.Token, pos int, err string) 
 		h.msg = msg
 		h.pos = pos
 	}
-	s.Init(fset.AddFile("", fset.Base(), len(src)), []byte(src), eh, ScanComments|dontInsertSemis)
+	s.Init(fset.AddFile("", fset.Base(), len(src)), []byte(src), eh, ScanComments)
 	_, tok0, _ := s.Scan()
 	_, tok1, _ := s.Scan()
 	if tok0 != tok {
@@ -649,27 +488,12 @@ var errors = []struct {
 	{"\a", token.ILLEGAL, 0, "illegal character U+0007"},
 	{`#`, token.ILLEGAL, 0, "illegal character U+0023 '#'"},
 	{`…`, token.ILLEGAL, 0, "illegal character U+2026 '…'"},
-	{`' '`, token.CHAR, 0, ""},
-	{`''`, token.CHAR, 0, "illegal character literal"},
-	{`'\8'`, token.CHAR, 2, "unknown escape sequence"},
-	{`'\08'`, token.CHAR, 3, "illegal character in escape sequence"},
-	{`'\x0g'`, token.CHAR, 4, "illegal character in escape sequence"},
-	{`'\Uffffffff'`, token.CHAR, 2, "escape sequence is invalid Unicode code point"},
-	{`'`, token.CHAR, 0, "character literal not terminated"},
 	{`""`, token.STRING, 0, ""},
 	{`"`, token.STRING, 0, "string not terminated"},
 	{"``", token.STRING, 0, ""},
 	{"`", token.STRING, 0, "string not terminated"},
 	{"/**/", token.COMMENT, 0, ""},
 	{"/*", token.COMMENT, 0, "comment not terminated"},
-	{"077", token.INT, 0, ""},
-	{"078.", token.FLOAT, 0, ""},
-	{"07801234567.", token.FLOAT, 0, ""},
-	{"078e0", token.FLOAT, 0, ""},
-	{"078", token.INT, 0, "illegal octal number"},
-	{"07800000009", token.INT, 0, "illegal octal number"},
-	{"0x", token.INT, 0, "illegal hexadecimal number"},
-	{"0X", token.INT, 0, "illegal hexadecimal number"},
 	{"\"abc\x00def\"", token.STRING, 4, "illegal character NUL"},
 	{"\"abc\x80def\"", token.STRING, 4, "illegal UTF-8 encoding"},
 }

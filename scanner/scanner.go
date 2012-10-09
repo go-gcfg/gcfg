@@ -45,7 +45,6 @@ type Scanner struct {
 	offset     int  // character offset
 	rdOffset   int  // reading offset (position after current character)
 	lineOffset int  // current line offset
-	insertSemi bool // insert a semicolon before next newline
 
 	// public state - ok to modify
 	ErrorCount int // number of errors encountered
@@ -90,8 +89,7 @@ func (s *Scanner) next() {
 type Mode uint
 
 const (
-	ScanComments    Mode = 1 << iota // return comments as COMMENT tokens
-	dontInsertSemis                  // do not automatically insert semicolons - for testing only
+	ScanComments Mode = 1 << iota // return comments as COMMENT tokens
 )
 
 // Init prepares the scanner s to tokenize the text src by setting the
@@ -124,7 +122,6 @@ func (s *Scanner) Init(file *token.File, src []byte, err ErrorHandler, mode Mode
 	s.offset = 0
 	s.rdOffset = 0
 	s.lineOffset = 0
-	s.insertSemi = false
 	s.ErrorCount = 0
 
 	s.next()
@@ -254,7 +251,6 @@ func (s *Scanner) scanIdentifier() string {
 func (s *Scanner) scanEscape(quote rune) {
 	offs := s.offset
 
-	var i, base, max uint32
 	switch s.ch {
 	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', quote:
 		s.next()
@@ -263,34 +259,6 @@ func (s *Scanner) scanEscape(quote rune) {
 	s.next() // always make progress
 	s.error(offs, "unknown escape sequence")
 	return
-}
-
-func (s *Scanner) scanChar() string {
-	// '\'' opening already consumed
-	offs := s.offset - 1
-
-	n := 0
-	for s.ch != '\'' {
-		ch := s.ch
-		n++
-		s.next()
-		if ch == '\n' || ch < 0 {
-			s.error(offs, "character literal not terminated")
-			n = 1
-			break
-		}
-		if ch == '\\' {
-			s.scanEscape('\'')
-		}
-	}
-
-	s.next()
-
-	if n != 1 {
-		s.error(offs, "illegal character literal")
-	}
-
-	return string(s.src[offs:s.offset])
 }
 
 func (s *Scanner) scanString() string {
@@ -354,51 +322,9 @@ func (s *Scanner) scanRawString() string {
 }
 
 func (s *Scanner) skipWhitespace() {
-	for s.ch == ' ' || s.ch == '\t' || s.ch == '\n' && !s.insertSemi || s.ch == '\r' {
+	for s.ch == ' ' || s.ch == '\t' || s.ch == '\n' || s.ch == '\r' {
 		s.next()
 	}
-}
-
-// Helper functions for scanning multi-byte tokens such as >> += >>= .
-// Different routines recognize different length tok_i based on matches
-// of ch_i. If a token ends in '=', the result is tok1 or tok3
-// respectively. Otherwise, the result is tok0 if there was no other
-// matching character, or tok2 if the matching character was ch2.
-
-func (s *Scanner) switch2(tok0, tok1 token.Token) token.Token {
-	if s.ch == '=' {
-		s.next()
-		return tok1
-	}
-	return tok0
-}
-
-func (s *Scanner) switch3(tok0, tok1 token.Token, ch2 rune, tok2 token.Token) token.Token {
-	if s.ch == '=' {
-		s.next()
-		return tok1
-	}
-	if s.ch == ch2 {
-		s.next()
-		return tok2
-	}
-	return tok0
-}
-
-func (s *Scanner) switch4(tok0, tok1 token.Token, ch2 rune, tok2, tok3 token.Token) token.Token {
-	if s.ch == '=' {
-		s.next()
-		return tok1
-	}
-	if s.ch == ch2 {
-		s.next()
-		if s.ch == '=' {
-			s.next()
-			return tok3
-		}
-		return tok2
-	}
-	return tok0
 }
 
 // Scan scans the next token and returns the token position, the token,
@@ -438,142 +364,42 @@ scanAgain:
 	pos = s.file.Pos(s.offset)
 
 	// determine token value
-	insertSemi := false
 	switch ch := s.ch; {
 	case isLetter(ch):
 		lit = s.scanIdentifier()
-		tok = token.IDENT // TODO string
-		insertSemi = true
+		tok = token.IDENT
 	default:
 		s.next() // always make progress
 		switch ch {
 		case -1:
-			if s.insertSemi {
-				s.insertSemi = false // EOF consumed
-				return pos, token.SEMICOLON, "\n"
-			}
 			tok = token.EOF
 		case '\n':
-			// we only reach here if s.insertSemi was
-			// set in the first place and exited early
-			// from s.skipWhitespace()
-			s.insertSemi = false // newline consumed
-			return pos, token.SEMICOLON, "\n"
+			return pos, token.EOL, "\n"
 		case '"':
-			insertSemi = true
 			tok = token.STRING
 			lit = s.scanString()
-		case '\'':
-			insertSemi = true
-			tok = token.CHAR
-			lit = s.scanChar()
 		case '`':
-			insertSemi = true
 			tok = token.STRING
 			lit = s.scanRawString()
-		case ':':
-			tok = s.switch2(token.COLON, token.DEFINE)
-		case '.':
-			if digitVal(s.ch) < 10 {
-				insertSemi = true
-				tok, lit = s.scanNumber(true)
-			} else if s.ch == '.' {
-				s.next()
-				if s.ch == '.' {
-					s.next()
-					tok = token.ELLIPSIS
-				}
-			} else {
-				tok = token.PERIOD
-			}
-		case ',':
-			tok = token.COMMA
-		case ';':
-			tok = token.SEMICOLON
-			lit = ";"
-		case '(':
-			tok = token.LPAREN
-		case ')':
-			insertSemi = true
-			tok = token.RPAREN
 		case '[':
 			tok = token.LBRACK
 		case ']':
-			insertSemi = true
 			tok = token.RBRACK
-		case '{':
-			tok = token.LBRACE
-		case '}':
-			insertSemi = true
-			tok = token.RBRACE
-		case '+':
-			tok = s.switch3(token.ADD, token.ADD_ASSIGN, '+', token.INC)
-			if tok == token.INC {
-				insertSemi = true
+		case ';', '#':
+			// comment
+			lit = s.scanComment()
+			if s.mode&ScanComments == 0 {
+				// skip comment
+				goto scanAgain
 			}
-		case '-':
-			tok = s.switch3(token.SUB, token.SUB_ASSIGN, '-', token.DEC)
-			if tok == token.DEC {
-				insertSemi = true
-			}
-		case '*':
-			tok = s.switch2(token.MUL, token.MUL_ASSIGN)
-		case '/':
-			if s.ch == '/' || s.ch == '*' {
-				// comment
-				if s.insertSemi && s.findLineEnd() {
-					// reset position to the beginning of the comment
-					s.ch = '/'
-					s.offset = s.file.Offset(pos)
-					s.rdOffset = s.offset + 1
-					s.insertSemi = false // newline consumed
-					return pos, token.SEMICOLON, "\n"
-				}
-				lit = s.scanComment()
-				if s.mode&ScanComments == 0 {
-					// skip comment
-					s.insertSemi = false // newline consumed
-					goto scanAgain
-				}
-				tok = token.COMMENT
-			} else {
-				tok = s.switch2(token.QUO, token.QUO_ASSIGN)
-			}
-		case '%':
-			tok = s.switch2(token.REM, token.REM_ASSIGN)
-		case '^':
-			tok = s.switch2(token.XOR, token.XOR_ASSIGN)
-		case '<':
-			if s.ch == '-' {
-				s.next()
-				tok = token.ARROW
-			} else {
-				tok = s.switch4(token.LSS, token.LEQ, '<', token.SHL, token.SHL_ASSIGN)
-			}
-		case '>':
-			tok = s.switch4(token.GTR, token.GEQ, '>', token.SHR, token.SHR_ASSIGN)
+			tok = token.COMMENT
 		case '=':
-			tok = s.switch2(token.ASSIGN, token.EQL)
-		case '!':
-			tok = s.switch2(token.NOT, token.NEQ)
-		case '&':
-			if s.ch == '^' {
-				s.next()
-				tok = s.switch2(token.AND_NOT, token.AND_NOT_ASSIGN)
-			} else {
-				tok = s.switch3(token.AND, token.AND_ASSIGN, '&', token.LAND)
-			}
-		case '|':
-			tok = s.switch3(token.OR, token.OR_ASSIGN, '|', token.LOR)
+			tok = token.ASSIGN
 		default:
 			s.error(s.file.Offset(pos), fmt.Sprintf("illegal character %#U", ch))
-			insertSemi = s.insertSemi // preserve insertSemi info
 			tok = token.ILLEGAL
 			lit = string(ch)
 		}
-	}
-	if s.mode&dontInsertSemis == 0 {
-		s.insertSemi = insertSemi
 	}
 
 	return
