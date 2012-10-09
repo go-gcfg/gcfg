@@ -6,8 +6,11 @@ package scanner_test
 
 import (
 	"fmt"
-	"go/scanner"
-	"go/token"
+)
+
+import (
+	"code.google.com/p/gcfg/scanner"
+	"code.google.com/p/gcfg/token"
 )
 
 func ExampleScanner_Scan() {

@@ -5,11 +5,14 @@
 package scanner
 
 import (
-	"go/token"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+)
+
+import (
+	"code.google.com/p/gcfg/token"
 )
 
 var fset = token.NewFileSet()

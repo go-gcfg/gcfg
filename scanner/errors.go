@@ -6,9 +6,12 @@ package scanner
 
 import (
 	"fmt"
-	"go/token"
 	"io"
 	"sort"
+)
+
+import (
+	"code.google.com/p/gcfg/token"
 )
 
 // In an ErrorList, an error is represented by an *Error.
