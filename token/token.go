@@ -67,56 +67,6 @@ func (tok Token) String() string {
 	return s
 }
 
-// A set of constants for precedence-based expression parsing.
-// Non-operators have lowest precedence, followed by operators
-// starting with precedence 1 up to unary operators. The highest
-// precedence corresponds serves as "catch-all" precedence for
-// selector, indexing, and other operator and delimiter tokens.
-//
-const (
-	LowestPrec  = 0 // non-operators
-	UnaryPrec   = 6
-	HighestPrec = 7
-)
-
-// Precedence returns the operator precedence of the binary
-// operator op. If op is not a binary operator, the result
-// is LowestPrecedence.
-//
-func (op Token) Precedence() int {
-	switch op {
-	case LOR:
-		return 1
-	case LAND:
-		return 2
-	case EQL, NEQ, LSS, LEQ, GTR, GEQ:
-		return 3
-	case ADD, SUB, OR, XOR:
-		return 4
-	case MUL, QUO, REM, SHL, SHR, AND, AND_NOT:
-		return 5
-	}
-	return LowestPrec
-}
-
-var keywords map[string]Token
-
-func init() {
-	keywords = make(map[string]Token)
-	for i := keyword_beg + 1; i < keyword_end; i++ {
-		keywords[tokens[i]] = i
-	}
-}
-
-// Lookup maps an identifier to its keyword token or IDENT (if not a keyword).
-//
-func Lookup(ident string) Token {
-	if tok, is_keyword := keywords[ident]; is_keyword {
-		return tok
-	}
-	return IDENT
-}
-
 // Predicates
 
 // IsLiteral returns true for tokens corresponding to identifiers
@@ -128,8 +78,3 @@ func (tok Token) IsLiteral() bool { return literal_beg < tok && tok < literal_en
 // delimiters; it returns false otherwise.
 //
 func (tok Token) IsOperator() bool { return operator_beg < tok && tok < operator_end }
-
-// IsKeyword returns true for tokens corresponding to keywords;
-// it returns false otherwise.
-//
-func (tok Token) IsKeyword() bool { return keyword_beg < tok && tok < keyword_end }
