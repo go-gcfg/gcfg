@@ -41,6 +41,7 @@ type elt struct {
 
 var tokens = [...]elt{
 	// Special tokens
+	{token.EOL, "\n", special},
 //FIXME
 //	{token.COMMENT, "/* a comment */", special},
 //	{token.COMMENT, "// a comment \n", special},
@@ -61,10 +62,9 @@ var tokens = [...]elt{
 //	{token.STRING, "`foo\r\nbar`", literal},
 
 	// Operators and delimiters
-//FIXME
-//	{token.ASSIGN, "=", operator},
-//	{token.LBRACK, "[", operator},
-//	{token.RBRACK, "]", operator},
+	{token.ASSIGN, "=", operator},
+	{token.LBRACK, "[", operator},
+	{token.RBRACK, "]", operator},
 }
 
 const whitespace = "  \t  \n\n\n" // to separate tokens
@@ -141,7 +141,7 @@ func TestScan(t *testing.T) {
 			epos.Line = src_linecount
 			epos.Column = 2
 		}
-		_ = pos // checkPos(t, lit, pos, epos) //FIXME
+		checkPos(t, lit, pos, epos)
 		if tok != e.tok {
 			t.Errorf("bad token for %q: got %s, expected %s", lit, tok, e.tok)
 		}
@@ -169,6 +169,19 @@ func TestScan(t *testing.T) {
 		index++
 		if tok == token.EOF {
 			break
+		}
+		// skip three EOLs
+		_, tok, lit = s.Scan()
+		if tok != token.EOL {
+			t.Errorf("bad token: got %s, expected %s", lit, tok, token.EOL)
+		}
+		_, tok, lit = s.Scan()
+		if tok != token.EOL {
+			t.Errorf("bad token: got %s, expected %s", lit, tok, token.EOL)
+		}
+		_, tok, lit = s.Scan()
+		if tok != token.EOL {
+			t.Errorf("bad token: got %s, expected %s", lit, tok, token.EOL)
 		}
 	}
 	if s.ErrorCount != 0 {

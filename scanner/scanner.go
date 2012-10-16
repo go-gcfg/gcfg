@@ -322,7 +322,7 @@ func (s *Scanner) scanRawString() string {
 }
 
 func (s *Scanner) skipWhitespace() {
-	for s.ch == ' ' || s.ch == '\t' || s.ch == '\n' || s.ch == '\r' {
+	for s.ch == ' ' || s.ch == '\t' || s.ch == '\r' {
 		s.next()
 	}
 }
