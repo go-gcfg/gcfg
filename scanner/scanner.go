@@ -9,10 +9,8 @@
 package scanner
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"unicode"
 	"unicode/utf8"
 )
@@ -134,26 +132,6 @@ func (s *Scanner) error(offs int, msg string) {
 	s.ErrorCount++
 }
 
-var prefix = []byte("//line ")
-
-func (s *Scanner) interpretLineComment(text []byte) {
-	if bytes.HasPrefix(text, prefix) {
-		// get filename and line number, if any
-		if i := bytes.LastIndex(text, []byte{':'}); i > 0 {
-			if line, err := strconv.Atoi(string(text[i+1:])); err == nil && line > 0 {
-				// valid //line filename:line comment;
-				filename := filepath.Clean(string(text[len(prefix):i]))
-				if !filepath.IsAbs(filename) {
-					// make filename relative to current directory
-					filename = filepath.Join(s.dir, filename)
-				}
-				// update scanner position
-				s.file.AddLineInfo(s.lineOffset+len(text)+1, filename, line) // +len(text)+1 since comment applies to next line
-			}
-		}
-	}
-}
-
 func (s *Scanner) scanComment() string {
 	// initial [;#] already consumed
 	offs := s.offset - 1 // position of initial [;#]
@@ -161,10 +139,6 @@ func (s *Scanner) scanComment() string {
 	s.next()
 	for s.ch != '\n' && s.ch >= 0 {
 		s.next()
-	}
-	if offs == s.lineOffset {
-		// comment starts at the beginning of the current line
-		s.interpretLineComment(s.src[offs:s.offset])
 	}
 	return string(s.src[offs:s.offset])
 }
