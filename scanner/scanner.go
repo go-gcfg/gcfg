@@ -159,11 +159,11 @@ func (s *Scanner) scanIdentifier() string {
 	return string(s.src[offs:s.offset])
 }
 
-func (s *Scanner) scanEscape(quote rune) {
+func (s *Scanner) scanEscape() {
 	offs := s.offset
 
 	switch s.ch {
-	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', quote:
+	case 'n', '\\', '"':
 		s.next()
 		return
 	}
@@ -184,7 +184,7 @@ func (s *Scanner) scanString() string {
 			break
 		}
 		if ch == '\\' {
-			s.scanEscape('"')
+			s.scanEscape()
 		}
 	}
 
