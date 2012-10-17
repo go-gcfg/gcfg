@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -42,9 +43,9 @@ type elt struct {
 var tokens = [...]elt{
 	// Special tokens
 	{token.EOL, "\n", special},
-//FIXME
-//	{token.COMMENT, "/* a comment */", special},
-//	{token.COMMENT, "// a comment \n", special},
+
+	{token.COMMENT, "; a comment \n", special},
+	{token.COMMENT, "# a comment \n", special},
 
 	// Identifiers and basic type literals
 //FIXME
@@ -126,8 +127,9 @@ func TestScan(t *testing.T) {
 		Line:     1,
 		Column:   1,
 	}
+	pos, tok, lit := s.Scan()
+outer:
 	for {
-		pos, tok, lit := s.Scan()
 		if lit == "" {
 			// no literal value for non-literal tokens
 			lit = tok.String()
@@ -161,8 +163,7 @@ func TestScan(t *testing.T) {
 		}
 		epos.Offset += len(lit) + len(whitespace)
 		epos.Line += newlineCount(lit) + whitespace_linecount
-		if tok == token.COMMENT && lit[1] == '/' {
-			// correct for unaccounted '/n' in //-style comment
+		if tok == token.COMMENT && strings.HasSuffix(e.lit, "\n") {
 			epos.Offset++
 			epos.Line++
 		}
@@ -170,18 +171,12 @@ func TestScan(t *testing.T) {
 		if tok == token.EOF {
 			break
 		}
-		// skip three EOLs
-		_, tok, lit = s.Scan()
-		if tok != token.EOL {
-			t.Errorf("bad token: got %s, expected %s", lit, tok, token.EOL)
-		}
-		_, tok, lit = s.Scan()
-		if tok != token.EOL {
-			t.Errorf("bad token: got %s, expected %s", lit, tok, token.EOL)
-		}
-		_, tok, lit = s.Scan()
-		if tok != token.EOL {
-			t.Errorf("bad token: got %s, expected %s", lit, tok, token.EOL)
+		// skip EOLs
+		for {
+			pos, tok, lit = s.Scan()
+			if tok != token.EOL {
+				continue outer
+			}
 		}
 	}
 	if s.ErrorCount != 0 {
@@ -509,8 +504,6 @@ var errors = []struct {
 //	{`"`, token.STRING, 0, "string not terminated"},
 //	{"``", token.STRING, 0, ""},
 //	{"`", token.STRING, 0, "string not terminated"},
-//	{"/**/", token.COMMENT, 0, ""},
-//	{"/*", token.COMMENT, 0, "comment not terminated"},
 //	{"\"abc\x00def\"", token.STRING, 4, "illegal character NUL"},
 //	{"\"abc\x80def\"", token.STRING, 4, "illegal UTF-8 encoding"},
 }
