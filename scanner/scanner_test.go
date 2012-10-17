@@ -47,10 +47,11 @@ var tokens = [...]elt{
 
 	// Identifiers and basic type literals
 //FIXME
-//	{token.IDENT, "foobar", literal},
-//	{token.IDENT, "a۰۱۸", literal},
-//	{token.IDENT, "foo६४", literal},
-//	{token.IDENT, "bar９８７６", literal},
+	{token.IDENT, "foobar", literal},
+	{token.IDENT, "a۰۱۸", literal},
+	{token.IDENT, "foo६४", literal},
+	{token.IDENT, "bar９８７６", literal},
+	{token.IDENT, "foo-bar", literal},
 //	{token.STRING, "`foobar`", literal},
 //	{token.STRING, "`" + `foo
 //	                        bar` +
@@ -305,9 +306,10 @@ var errors = []struct {
 	err string
 }{
 //FIXME
-//	{"\a", token.ILLEGAL, 0, "illegal character U+0007"},
-//	{`#`, token.ILLEGAL, 0, "illegal character U+0023 '#'"},
-//	{`…`, token.ILLEGAL, 0, "illegal character U+2026 '…'"},
+	{"\a", token.ILLEGAL, 0, "illegal character U+0007"},
+	{"/", token.ILLEGAL, 0, "illegal character U+002F '/'"},
+	{"_", token.ILLEGAL, 0, "illegal character U+005F '_'"},
+	{`…`, token.ILLEGAL, 0, "illegal character U+2026 '…'"},
 //	{`""`, token.STRING, 0, ""},
 //	{`"`, token.STRING, 0, "string not terminated"},
 //	{"``", token.STRING, 0, ""},
