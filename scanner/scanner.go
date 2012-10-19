@@ -43,6 +43,7 @@ type Scanner struct {
 	offset     int  // character offset
 	rdOffset   int  // reading offset (position after current character)
 	lineOffset int  // current line offset
+	nextVal    bool // next token is expected to be a value
 
 	// public state - ok to modify
 	ErrorCount int // number of errors encountered
@@ -121,6 +122,7 @@ func (s *Scanner) Init(file *token.File, src []byte, err ErrorHandler, mode Mode
 	s.rdOffset = 0
 	s.lineOffset = 0
 	s.ErrorCount = 0
+	s.nextVal = false
 
 	s.next()
 }
@@ -205,26 +207,43 @@ func stripCR(b []byte) []byte {
 	return c[:i]
 }
 
-func (s *Scanner) scanRawString() string {
-	// '`' opening already consumed
-	offs := s.offset - 1
+func (s *Scanner) scanValString() string {
+	offs := s.offset
 
 	hasCR := false
-	for s.ch != '`' {
+	end := offs
+	inQuote := false
+loop:
+	for inQuote || s.ch != '\n' && s.ch != ';' && s.ch != '#' {
 		ch := s.ch
 		s.next()
-		if ch == '\r' {
+		switch {
+		case inQuote && ch == '\\':
+			s.scanEscape()
+		case !inQuote && ch == '\\':
+			if s.ch == '\r' {
+				hasCR = true
+				s.next()
+			}
+			if s.ch != '\n' {
+				s.error(offs, "unquoted '\\' must be followed by new line")
+				break loop
+			}
+			s.next()
+		case ch == '"':
+			inQuote = !inQuote
+		case ch == '\r':
 			hasCR = true
-		}
-		if ch < 0 {
+		case ch < 0 || inQuote && ch == '\n':
 			s.error(offs, "string not terminated")
-			break
+			break loop
+		}
+		if inQuote || !isWhiteSpace(ch) {
+			end = s.offset
 		}
 	}
 
-	s.next()
-
-	lit := s.src[offs:s.offset]
+	lit := s.src[offs:end]
 	if hasCR {
 		lit = stripCR(lit)
 	}
@@ -232,8 +251,12 @@ func (s *Scanner) scanRawString() string {
 	return string(lit)
 }
 
+func isWhiteSpace(ch rune) bool {
+	return ch == ' ' || ch == '\t' || ch == '\r'
+}
+
 func (s *Scanner) skipWhitespace() {
-	for s.ch == ' ' || s.ch == '\t' || s.ch == '\r' {
+	for isWhiteSpace(s.ch) {
 		s.next()
 	}
 }
@@ -276,6 +299,10 @@ scanAgain:
 
 	// determine token value
 	switch ch := s.ch; {
+	case s.nextVal:
+		lit = s.scanValString()
+		tok = token.STRING
+		s.nextVal = false
 	case isLetter(ch):
 		lit = s.scanIdentifier()
 		tok = token.IDENT
@@ -289,9 +316,6 @@ scanAgain:
 		case '"':
 			tok = token.STRING
 			lit = s.scanString()
-		case '`':
-			tok = token.STRING
-			lit = s.scanRawString()
 		case '[':
 			tok = token.LBRACK
 		case ']':
@@ -306,6 +330,7 @@ scanAgain:
 			tok = token.COMMENT
 		case '=':
 			tok = token.ASSIGN
+			s.nextVal = true
 		default:
 			s.error(s.file.Offset(pos), fmt.Sprintf("illegal character %#U", ch))
 			tok = token.ILLEGAL

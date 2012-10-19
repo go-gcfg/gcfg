@@ -13,7 +13,7 @@ import (
 	"code.google.com/p/gcfg/token"
 )
 
-func XExampleScanner_Scan() { //FIXME
+func ExampleScanner_Scan() {
 	// src is the input that we want to tokenize.
 	src := []byte(`[profile "A"]
 color = blue ; Comment`)
@@ -38,7 +38,7 @@ color = blue ; Comment`)
 	// 1:2	IDENT	"profile"
 	// 1:10	STRING	"\"A\""
 	// 1:13	]	""
-	// 1:14	EOL	""
+	// 1:14	EOL	"\n"
 	// 2:1	IDENT	"color"
 	// 2:7	=	""
 	// 2:9	STRING	"blue"

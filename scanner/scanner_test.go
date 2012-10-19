@@ -36,37 +36,50 @@ type elt struct {
 	tok   token.Token
 	lit   string
 	class int
+	pre   string
+	suf   string
 }
 
 var tokens = [...]elt{
 	// Special tokens
-	{token.EOL, "\n", special},
+	{token.EOL, "\n", special, "", ""},
 
-	{token.COMMENT, "; a comment \n", special},
-	{token.COMMENT, "# a comment \n", special},
-
-	// Identifiers and basic type literals
-//FIXME
-	{token.IDENT, "foobar", literal},
-	{token.IDENT, "a۰۱۸", literal},
-	{token.IDENT, "foo६४", literal},
-	{token.IDENT, "bar９８７６", literal},
-	{token.IDENT, "foo-bar", literal},
-	{token.STRING, `"foobar"`, literal},
-	{token.STRING, `"\n"`, literal},
-	{token.STRING, `"\""`, literal},
-//	{token.STRING, "`" + `foo
-//	                        bar` +
-//		"`",
-//		literal,
-//	},
-//	{token.STRING, "`\r`", literal},
-//	{token.STRING, "`foo\r\nbar`", literal},
+	{token.COMMENT, "; a comment \n", special, "", ""},
+	{token.COMMENT, "# a comment \n", special, "", ""},
 
 	// Operators and delimiters
-	{token.ASSIGN, "=", operator},
-	{token.LBRACK, "[", operator},
-	{token.RBRACK, "]", operator},
+	{token.ASSIGN, "=", operator, "", "value"},
+	{token.LBRACK, "[", operator, "", ""},
+	{token.RBRACK, "]", operator, "", ""},
+
+	// Identifiers
+	{token.IDENT, "foobar", literal, "", ""},
+	{token.IDENT, "a۰۱۸", literal, "", ""},
+	{token.IDENT, "foo६४", literal, "", ""},
+	{token.IDENT, "bar９８７６", literal, "", ""},
+	{token.IDENT, "foo-bar", literal, "", ""},
+	// String literals (subsection names)
+	{token.STRING, `"foobar"`, literal, "", ""},
+	{token.STRING, `"\n"`, literal, "", ""},
+	{token.STRING, `"\""`, literal, "", ""},
+	// String literals (values)
+	{token.STRING, `"foobar"`, literal, "=", ""},
+	{token.STRING, `"foo\nbar"`, literal, "=", ""},
+	{token.STRING, `"foo\"bar"`, literal, "=", ""},
+	{token.STRING, `"foo\\bar"`, literal, "=", ""},
+	{token.STRING, `"foobar"`, literal, "=", ""},
+	{token.STRING, `"foobar"`, literal, "= ", ""},
+	{token.STRING, `"foobar"`, literal, "=", "\n"},
+	{token.STRING, `"foobar"`, literal, "=", ";"},
+	{token.STRING, `"foobar"`, literal, "=", " ;"},
+	{token.STRING, `"foobar"`, literal, "=", "#"},
+	{token.STRING, `"foobar"`, literal, "=", " #"},
+	{token.STRING, "foobar", literal, "=", ""},
+	{token.STRING, "foobar", literal, "= ", ""},
+	{token.STRING, "foobar", literal, "=", " "},
+	{token.STRING, `"foo" "bar"`, literal, "=", " "},
+	{token.STRING, "foo\\\nbar", literal, "=", ""},
+	{token.STRING, "foo\\\r\nbar", literal, "=", ""},
 }
 
 const whitespace = "  \t  \n\n\n" // to separate tokens
@@ -74,7 +87,9 @@ const whitespace = "  \t  \n\n\n" // to separate tokens
 var source = func() []byte {
 	var src []byte
 	for _, t := range tokens {
+		src = append(src, t.pre...)
 		src = append(src, t.lit...)
+		src = append(src, t.suf...)
 		src = append(src, whitespace...)
 	}
 	return src
@@ -135,7 +150,7 @@ outer:
 			// no literal value for non-literal tokens
 			lit = tok.String()
 		}
-		e := elt{token.EOF, "", special}
+		e := elt{token.EOF, "", special, "", ""}
 		if index < len(tokens) {
 			e = tokens[index]
 		}
@@ -145,13 +160,20 @@ outer:
 			epos.Column = 2
 		}
 		checkPos(t, lit, pos, epos)
+		if strings.ContainsRune(e.pre, '=') {
+			if tok != token.ASSIGN {
+				t.Errorf("bad token for %q: got %s, expected %s", lit, tok, token.ASSIGN)
+			}
+			epos.Offset += len(e.pre)
+			pos, tok, lit = s.Scan()
+		}
 		if tok != e.tok {
 			t.Errorf("bad token for %q: got %s, expected %s", lit, tok, e.tok)
 		}
 		if e.tok.IsLiteral() {
-			// no CRs in raw string literals
+			// no CRs in value string literals
 			elit := e.lit
-			if elit[0] == '`' {
+			if strings.ContainsRune(e.pre, '=') {
 				elit = string(stripCR([]byte(elit)))
 				epos.Offset += len(e.lit) - len(lit) // correct position
 			}
@@ -172,6 +194,22 @@ outer:
 		if tok == token.EOF {
 			break
 		}
+		// adjust for suffix
+		epos.Offset += len(e.suf)
+		if strings.ContainsRune(e.suf, '\n') {
+			epos.Line++
+		}
+		if e.suf == "value" {
+			pos, tok, lit = s.Scan()
+			if tok != token.STRING {
+				t.Errorf("bad token for %q: got %s, expected %s", lit, tok, token.STRING)
+			}
+		} else if strings.ContainsRune(e.suf, ';') || strings.ContainsRune(e.suf, '#') {
+			pos, tok, lit = s.Scan()
+			if tok != token.COMMENT {
+				t.Errorf("bad token for %q: got %s, expected %s", lit, tok, token.COMMENT)
+			}
+		}
 		// skip EOLs
 		for {
 			pos, tok, lit = s.Scan()
@@ -186,7 +224,7 @@ outer:
 }
 
 // Verify that initializing the same scanner more then once works correctly.
-func XTestInit(t *testing.T) { //FIXME
+func TestInit(t *testing.T) {
 	var s Scanner
 
 	// 1st init
@@ -278,6 +316,9 @@ func checkError(t *testing.T, src string, tok token.Token, pos int, err string) 
 		h.pos = pos
 	}
 	s.Init(fset.AddFile("", fset.Base(), len(src)), []byte(src), eh, ScanComments)
+	if src[0] == '=' {
+		_, _, _ = s.Scan()
+	}
 	_, tok0, _ := s.Scan()
 	_, tok1, _ := s.Scan()
 	if tok0 != tok {
@@ -307,13 +348,17 @@ var errors = []struct {
 	pos int
 	err string
 }{
-//FIXME
 	{"\a", token.ILLEGAL, 0, "illegal character U+0007"},
 	{"/", token.ILLEGAL, 0, "illegal character U+002F '/'"},
 	{"_", token.ILLEGAL, 0, "illegal character U+005F '_'"},
 	{`…`, token.ILLEGAL, 0, "illegal character U+2026 '…'"},
 	{`""`, token.STRING, 0, ""},
 	{`"`, token.STRING, 0, "string not terminated"},
+	{"\"\n", token.STRING, 0, "string not terminated"},
+	{`="`, token.STRING, 1, "string not terminated"},
+	{"=\"\n", token.STRING, 1, "string not terminated"},
+	{"=\\", token.STRING, 1, "unquoted '\\' must be followed by new line"},
+	{"=\\\r", token.STRING, 1, "unquoted '\\' must be followed by new line"},
 	{`"\z"`, token.STRING, 2, "unknown escape sequence"},
 	{`"\a"`, token.STRING, 2, "unknown escape sequence"},
 	{`"\b"`, token.STRING, 2, "unknown escape sequence"},
@@ -322,9 +367,6 @@ var errors = []struct {
 	{`"\t"`, token.STRING, 2, "unknown escape sequence"},
 	{`"\v"`, token.STRING, 2, "unknown escape sequence"},
 	{`"\0"`, token.STRING, 2, "unknown escape sequence"},
-//	{"`", token.STRING, 0, "string not terminated"},
-//	{"\"abc\x00def\"", token.STRING, 4, "illegal character NUL"},
-//	{"\"abc\x80def\"", token.STRING, 4, "illegal UTF-8 encoding"},
 }
 
 func TestScanErrors(t *testing.T) {
