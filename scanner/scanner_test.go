@@ -258,15 +258,9 @@ func TestInit(t *testing.T) {
 	}
 }
 
-func XTestStdErrorHander(t *testing.T) { //FIXME
+func TestStdErrorHandler(t *testing.T) {
 	const src = "@\n" + // illegal character, cause an error
-		"@ @\n" + // two errors on the same line
-		"//line File2:20\n" +
-		"@\n" + // different file, but same line
-		"//line File2:1\n" +
-		"@ @\n" + // same file, decreasing line number
-		"//line File1:1\n" +
-		"@ @ @" // original file, line 1 again
+		"@ @\n" // two errors on the same line
 
 	var list ErrorList
 	eh := func(pos token.Position, msg string) { list.Add(pos, msg) }
@@ -283,20 +277,20 @@ func XTestStdErrorHander(t *testing.T) { //FIXME
 		t.Errorf("found %d errors, expected %d", len(list), s.ErrorCount)
 	}
 
-	if len(list) != 9 {
-		t.Errorf("found %d raw errors, expected 9", len(list))
+	if len(list) != 3 {
+		t.Errorf("found %d raw errors, expected 3", len(list))
 		PrintError(os.Stderr, list)
 	}
 
 	list.Sort()
-	if len(list) != 9 {
-		t.Errorf("found %d sorted errors, expected 9", len(list))
+	if len(list) != 3 {
+		t.Errorf("found %d sorted errors, expected 3", len(list))
 		PrintError(os.Stderr, list)
 	}
 
 	list.RemoveMultiples()
-	if len(list) != 4 {
-		t.Errorf("found %d one-per-line errors, expected 4", len(list))
+	if len(list) != 2 {
+		t.Errorf("found %d one-per-line errors, expected 2", len(list))
 		PrintError(os.Stderr, list)
 	}
 }

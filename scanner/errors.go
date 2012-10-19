@@ -54,19 +54,11 @@ func (p ErrorList) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 func (p ErrorList) Less(i, j int) bool {
 	e := &p[i].Pos
 	f := &p[j].Pos
-	// Note that it is not sufficient to simply compare file offsets because
-	// the offsets do not reflect modified line information (through //line
-	// comments).
 	if e.Filename < f.Filename {
 		return true
 	}
 	if e.Filename == f.Filename {
-		if e.Line < f.Line {
-			return true
-		}
-		if e.Line == f.Line {
-			return e.Column < f.Column
-		}
+		return e.Offset < f.Offset
 	}
 	return false
 }
