@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package scanner implements a scanner for Go source text.
+// Package scanner implements a scanner for gcfg configuration text.
 // It takes a []byte as source which can then be tokenized
 // through repeated calls to the Scan method.
 //
@@ -265,14 +265,8 @@ func (s *Scanner) skipWhitespace() {
 // and its literal string if applicable. The source end is indicated by
 // token.EOF.
 //
-// If the returned token is a literal (token.IDENT, token.INT, token.FLOAT,
-// token.IMAG, token.CHAR, token.STRING) or token.COMMENT, the literal string
-// has the corresponding value.
-//
-// If the returned token is token.SEMICOLON, the corresponding
-// literal string is ";" if the semicolon was present in the source,
-// and "\n" if the semicolon was inserted because of a newline or
-// at EOF.
+// If the returned token is a literal (token.IDENT, token.STRING) or
+// token.COMMENT, the literal string has the corresponding value.
 //
 // If the returned token is token.ILLEGAL, the literal string is the
 // offending character.
