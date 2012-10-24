@@ -42,15 +42,14 @@ type elt struct {
 
 var tokens = [...]elt{
 	// Special tokens
-	{token.EOL, "\n", special, "", ""},
-
-	{token.COMMENT, "; a comment \n", special, "", ""},
-	{token.COMMENT, "# a comment \n", special, "", ""},
+	{token.COMMENT, "; a comment", special, "", "\n"},
+	{token.COMMENT, "# a comment", special, "", "\n"},
 
 	// Operators and delimiters
 	{token.ASSIGN, "=", operator, "", "value"},
 	{token.LBRACK, "[", operator, "", ""},
 	{token.RBRACK, "]", operator, "", ""},
+	{token.EOL, "\n", operator, "", ""},
 
 	// Identifiers
 	{token.IDENT, "foobar", literal, "", ""},
@@ -143,9 +142,8 @@ func TestScan(t *testing.T) {
 		Line:     1,
 		Column:   1,
 	}
-	pos, tok, lit := s.Scan()
-outer:
 	for {
+		pos, tok, lit := s.Scan()
 		if lit == "" {
 			// no literal value for non-literal tokens
 			lit = tok.String()
@@ -159,14 +157,19 @@ outer:
 			epos.Line = src_linecount
 			epos.Column = 2
 		}
-		checkPos(t, lit, pos, epos)
 		if strings.ContainsRune(e.pre, '=') {
+			epos.Column = 1
+			checkPos(t, lit, pos, epos)
 			if tok != token.ASSIGN {
 				t.Errorf("bad token for %q: got %s, expected %s", lit, tok, token.ASSIGN)
 			}
-			epos.Offset += len(e.pre)
 			pos, tok, lit = s.Scan()
 		}
+		epos.Offset += len(e.pre)
+		if tok != token.EOF {
+			epos.Column = 1 + len(e.pre)
+		}
+		checkPos(t, lit, pos, epos)
 		if tok != e.tok {
 			t.Errorf("bad token for %q: got %s, expected %s", lit, tok, e.tok)
 		}
@@ -184,20 +187,11 @@ outer:
 		if tokenclass(tok) != e.class {
 			t.Errorf("bad class for %q: got %d, expected %d", lit, tokenclass(tok), e.class)
 		}
-		epos.Offset += len(lit) + len(whitespace)
-		epos.Line += newlineCount(lit) + whitespace_linecount
-		if tok == token.COMMENT && strings.HasSuffix(e.lit, "\n") {
-			epos.Offset++
-			epos.Line++
-		}
+		epos.Offset += len(lit) + len(e.suf) + len(whitespace)
+		epos.Line += newlineCount(lit) + newlineCount(e.suf) + whitespace_linecount
 		index++
 		if tok == token.EOF {
 			break
-		}
-		// adjust for suffix
-		epos.Offset += len(e.suf)
-		if strings.ContainsRune(e.suf, '\n') {
-			epos.Line++
 		}
 		if e.suf == "value" {
 			pos, tok, lit = s.Scan()
@@ -211,10 +205,10 @@ outer:
 			}
 		}
 		// skip EOLs
-		for {
+		for i := 0; i < whitespace_linecount+newlineCount(e.suf); i++ {
 			pos, tok, lit = s.Scan()
 			if tok != token.EOL {
-				continue outer
+				t.Errorf("bad token for %q: got %s, expected %s", lit, tok, token.EOL)
 			}
 		}
 	}

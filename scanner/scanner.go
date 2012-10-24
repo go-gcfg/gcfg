@@ -306,7 +306,7 @@ scanAgain:
 		case -1:
 			tok = token.EOF
 		case '\n':
-			return pos, token.EOL, "\n"
+			tok = token.EOL
 		case '"':
 			tok = token.STRING
 			lit = s.scanString()

@@ -16,7 +16,6 @@ type Token int
 const (
 	// Special tokens
 	ILLEGAL Token = iota
-	EOL
 	EOF
 	COMMENT
 
@@ -32,13 +31,13 @@ const (
 	ASSIGN // =
 	LBRACK // [
 	RBRACK // ]
+	EOL    // \n
 	operator_end
 )
 
 var tokens = [...]string{
 	ILLEGAL: "ILLEGAL",
 
-	EOL:     "EOL",
 	EOF:     "EOF",
 	COMMENT: "COMMENT",
 
@@ -48,6 +47,7 @@ var tokens = [...]string{
 	ASSIGN: "=",
 	LBRACK: "[",
 	RBRACK: "]",
+	EOL:    "\n",
 }
 
 // String returns the string corresponding to the token tok.

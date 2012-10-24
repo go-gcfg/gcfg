@@ -30,17 +30,17 @@ color = blue ; Comment`)
 		if tok == token.EOF {
 			break
 		}
-		fmt.Printf("%s\t%s\t%q\n", fset.Position(pos), tok, lit)
+		fmt.Printf("%s\t%q\t%q\n", fset.Position(pos), tok, lit)
 	}
 
 	// output:
-	// 1:1	[	""
-	// 1:2	IDENT	"profile"
-	// 1:10	STRING	"\"A\""
-	// 1:13	]	""
-	// 1:14	EOL	"\n"
-	// 2:1	IDENT	"color"
-	// 2:7	=	""
-	// 2:9	STRING	"blue"
-	// 2:14	COMMENT	"; Comment"
+	// 1:1	"["	""
+	// 1:2	"IDENT"	"profile"
+	// 1:10	"STRING"	"\"A\""
+	// 1:13	"]"	""
+	// 1:14	"\n"	""
+	// 2:1	"IDENT"	"color"
+	// 2:7	"="	""
+	// 2:9	"STRING"	"blue"
+	// 2:14	"COMMENT"	"; Comment"
 }
