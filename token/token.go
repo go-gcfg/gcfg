@@ -5,6 +5,9 @@
 // Package token defines constants representing the lexical tokens of the gcfg
 // configuration syntax and basic operations on tokens (printing, predicates).
 //
+// Note that the API for the token package may change to accommodate new
+// features or implementation changes in gcfg.
+//
 package token
 
 import "strconv"

@@ -6,6 +6,9 @@
 // It takes a []byte as source which can then be tokenized
 // through repeated calls to the Scan method.
 //
+// Note that the API for the scanner package may change to accommodate new
+// features or implementation changes in gcfg.
+//
 package scanner
 
 import (
