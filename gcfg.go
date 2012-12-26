@@ -35,7 +35,6 @@
 //  - reading
 //    - define internal representation structure
 //    - support multi-value variables
-//    - non-regexp based parser
 //    - support partially quoted strings
 //    - support escaping in strings
 //    - support multiple inputs (readers, strings, files)
@@ -47,9 +46,7 @@
 //    - support matching on unique prefix (?)
 //  - writing gcfg files
 //  - error handling
-//    - include error context
-//    - more helpful error messages
-//    - error types / codes?
+//    - make error context accessible programmatically?
 //    - limit input size?
 //  - move TODOs to issue tracker (eventually)
 //

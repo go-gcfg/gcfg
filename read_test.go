@@ -126,7 +126,7 @@ func TestReadStringInto(t *testing.T) {
 	for _, tg := range readtests {
 		for i, tt := range tg.tests {
 			id := fmt.Sprintf("%s:%d", tg.group, i)
-			// get the type of the expected result 
+			// get the type of the expected result
 			restyp := reflect.TypeOf(tt.exp).Elem()
 			// create a new instance to hold the actual result
 			res := reflect.New(restyp).Interface()
