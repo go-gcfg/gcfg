@@ -52,6 +52,7 @@ var readtests = []struct {
 	{"[section]\nname=\"value\"", &conf01{sect01{"value"}}, true},
 	{"[section]\nname=\" value \"", &conf01{sect01{" value "}}, true},
 	{"\n[section]\nname=\"value ; cmnt\"", &conf01{sect01{"value ; cmnt"}}, true},
+	{"[section]\nname=\"val\" \"ue\"", &conf01{sect01{"val ue"}}, true},
 	// long lines
 	{sp4096 + "[section]\nname=value\n", &conf01{sect01{"value"}}, true},
 	{"[" + sp4096 + "section]\nname=value\n", &conf01{sect01{"value"}}, true},

@@ -14,10 +14,21 @@ import (
 )
 
 func unquote(s string) string {
-	if s != "" && s[0] == '"' {
-		return s[1 : len(s)-1] // FIXME
+	u, q := make([]rune, 0, len(s)), false
+	for _, c := range s {
+		switch c {
+		case '"':
+			q = !q
+			continue
+		default:
+			u = append(u, c)
+		}
 	}
-	return s
+	if q {
+		// should be caught by scanner
+		panic("missing end quote")
+	}
+	return string(u)
 }
 
 func readInto(config interface{}, fset *token.FileSet, file *token.File, src []byte) error {
