@@ -1,24 +1,98 @@
 package gcfg
 
 import (
-	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
 )
 
-var (
-	reCmnt    = regexp.MustCompile(`^([^;#"]*)[;#].*$`)
-	reCmntQ   = regexp.MustCompile(`^([^;#"]*"[^"]*"[^;#"]*)[;#].*$`)
-	reBlank   = regexp.MustCompile(`^\s*$`)
-	reSect    = regexp.MustCompile(`^\s*\[\s*([^"\s]*)\s*\]\s*$`)
-	reSectSub = regexp.MustCompile(`^\s*\[\s*([^"\s]*)\s*"([^"]+)"\s*\]\s*$`)
-	reVar     = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*([^"\s]*)\s*$`)
-	reVarQ    = regexp.MustCompile(`^\s*([^"=\s]+)\s*=\s*"([^"\n\\]*)"\s*$`)
-	reVarDflt = regexp.MustCompile(`^\s*\b(.*)\b\s*$`)
+import (
+	"code.google.com/p/gcfg/scanner"
+	"code.google.com/p/gcfg/token"
 )
+
+func unquote(s string) string {
+	if s != "" && s[0] == '"' {
+		return s[1 : len(s)-1] // FIXME
+	}
+	return s
+}
+
+func readInto(config interface{}, fset *token.FileSet, file *token.File, src []byte) error {
+	var s scanner.Scanner
+	s.Init(file, src, nil, 0)
+	sect, sectsub := "", ""
+	pos, tok, lit := s.Scan()
+	errfn := func(msg string) error {
+		return fmt.Errorf("%s: %s", fset.Position(pos), msg)
+	}
+	for {
+		switch tok {
+		case token.EOF:
+			return nil
+		case token.EOL, token.COMMENT:
+			pos, tok, lit = s.Scan()
+			continue
+		case token.LBRACK:
+			pos, tok, lit = s.Scan()
+			if tok != token.IDENT {
+				return errfn("expected section name")
+			}
+			sect, sectsub = lit, ""
+			pos, tok, lit = s.Scan()
+			if tok == token.STRING {
+				sectsub = unquote(lit)
+				if sectsub == "" {
+					return errfn("empty subsection name")
+				}
+				pos, tok, lit = s.Scan()
+			}
+			if tok != token.RBRACK {
+				if sectsub == "" {
+					return errfn("expected subsection name or right bracket")
+				}
+				return errfn("expected right bracket")
+			}
+			pos, tok, lit = s.Scan()
+			if tok != token.EOL && tok != token.EOF && tok != token.COMMENT {
+				return errfn("expected EOL, EOF, or comment")
+			}
+		case token.IDENT:
+			if sect == "" {
+				return errfn("expected section header")
+			}
+			n := lit
+			pos, tok, lit = s.Scan()
+			var v string
+			if tok == token.EOF || tok == token.EOL || tok == token.COMMENT {
+				v = defaultValue
+			} else {
+				if tok != token.ASSIGN {
+					return errfn("expected '='")
+				}
+				pos, tok, lit = s.Scan()
+				if tok != token.STRING {
+					return errfn("expected value")
+				}
+				v = unquote(lit)
+				pos, tok, lit = s.Scan()
+				if tok != token.EOL && tok != token.EOF && tok != token.COMMENT {
+					return errfn("expected EOL, EOF, or comment")
+				}
+			}
+			err := set(config, sect, sectsub, n, v)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("%s invalid token %s: %q", fset.Position(pos),
+				tok, lit)
+		}
+	}
+	panic("never reached")
+}
 
 // ReadInto reads gcfg formatted data from reader and sets the values into the
 // corresponding fields in config.
@@ -62,74 +136,13 @@ var (
 // See ReadStringInto for examples.
 //
 func ReadInto(config interface{}, reader io.Reader) error {
-	r := bufio.NewReader(reader)
-	sect, sectsub := "", ""
-	lp := []byte{}
-	for line := 1; true; line++ {
-		l, pre, err := r.ReadLine()
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if pre {
-			lp = append(lp, l...)
-			line--
-			continue
-		}
-		if len(l) > 0 {
-			l = append(lp, l...)
-			lp = []byte{}
-		}
-		// exclude comments
-		if c := reCmnt.FindSubmatch(l); c != nil {
-			l = c[1]
-		} else if c := reCmntQ.FindSubmatch(l); c != nil {
-			l = c[1]
-		}
-		if !reBlank.Match(l) {
-			// "switch" based on line contents
-			if s, ss := reSect.FindSubmatch(l), reSectSub.FindSubmatch(l); //
-			s != nil || ss != nil {
-				// section
-				if s != nil {
-					sect, sectsub = string(s[1]), ""
-				} else { // ss != nil
-					sect, sectsub = string(ss[1]), string(ss[2])
-				}
-				if sect == "" {
-					return fmt.Errorf("empty section name not allowed")
-				}
-				if ss != nil && sectsub == "" {
-					return fmt.Errorf("subsection name \"\" not allowed; " +
-						"use [section-name] for blank subsection name")
-				}
-			} else if v, vq, vd := reVar.FindSubmatch(l),
-				reVarQ.FindSubmatch(l), reVarDflt.FindSubmatch(l); //
-			v != nil || vq != nil || vd != nil {
-				// variable
-				if sect == "" {
-					return fmt.Errorf("variable must be defined in a section")
-				}
-				var name, value string
-				if v != nil {
-					name, value = string(v[1]), string(v[2])
-				} else if vq != nil {
-					name, value = string(vq[1]), string(vq[2])
-				} else { // vd != nil
-					name, value = string(vd[1]), defaultValue
-				}
-				err := set(config, sect, sectsub, name, value)
-				if err != nil {
-					return err
-				}
-			} else {
-				return fmt.Errorf("invalid line %q", string(l))
-			}
-		}
-		if err == io.EOF {
-			break
-		}
+	src, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return err
 	}
-	return nil
+	fset := token.NewFileSet()
+	file := fset.AddFile("", fset.Base(), len(src))
+	return readInto(config, fset, file, src)
 }
 
 // ReadStringInto reads gcfg formatted data from str and sets the values into
@@ -151,5 +164,11 @@ func ReadFileInto(config interface{}, filename string) error {
 		return err
 	}
 	defer f.Close()
-	return ReadInto(config, f)
+	src, err := ioutil.ReadAll(f)
+	if err != nil {
+		return err
+	}
+	fset := token.NewFileSet()
+	file := fset.AddFile(filename, fset.Base(), len(src))
+	return readInto(config, fset, file, src)
 }
