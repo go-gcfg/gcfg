@@ -45,7 +45,6 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 			return nil
 		case token.EOL, token.COMMENT:
 			pos, tok, lit = s.Scan()
-			continue
 		case token.LBRACK:
 			pos, tok, lit = s.Scan()
 			if tok != token.IDENT {
@@ -98,8 +97,10 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 				return err
 			}
 		default:
-			return fmt.Errorf("%s invalid token %s: %q", fset.Position(pos),
-				tok, lit)
+			if sect == "" {
+				return errfn("expected section header")
+			}
+			return errfn("expected section header or variable declaration")
 		}
 	}
 	panic("never reached")
