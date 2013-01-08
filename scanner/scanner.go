@@ -164,17 +164,21 @@ func (s *Scanner) scanIdentifier() string {
 	return string(s.src[offs:s.offset])
 }
 
-func (s *Scanner) scanEscape() {
+func (s *Scanner) scanEscape(val bool) {
 	offs := s.offset
-
-	switch s.ch {
-	case 'n', '\\', '"':
-		s.next()
-		return
-	}
+	ch := s.ch
 	s.next() // always make progress
-	s.error(offs, "unknown escape sequence")
-	return
+	switch ch {
+	case '\\', '"':
+		// ok
+	case 'n', 't':
+		if val {
+			break // ok
+		}
+		fallthrough
+	default:
+		s.error(offs, "unknown escape sequence")
+	}
 }
 
 func (s *Scanner) scanString() string {
@@ -189,7 +193,7 @@ func (s *Scanner) scanString() string {
 			break
 		}
 		if ch == '\\' {
-			s.scanEscape()
+			s.scanEscape(false)
 		}
 	}
 
@@ -222,7 +226,7 @@ loop:
 		s.next()
 		switch {
 		case inQuote && ch == '\\':
-			s.scanEscape()
+			s.scanEscape(true)
 		case !inQuote && ch == '\\':
 			if s.ch == '\r' {
 				hasCR = true

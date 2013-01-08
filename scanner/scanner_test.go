@@ -59,9 +59,9 @@ var tokens = [...]elt{
 	{token.IDENT, "foo-bar", literal, "", ""},
 	// String literals (subsection names)
 	{token.STRING, `"foobar"`, literal, "", ""},
-	{token.STRING, `"\n"`, literal, "", ""},
 	{token.STRING, `"\""`, literal, "", ""},
 	// String literals (values)
+	{token.STRING, `"\n"`, literal, "=", ""},
 	{token.STRING, `"foobar"`, literal, "=", ""},
 	{token.STRING, `"foo\nbar"`, literal, "=", ""},
 	{token.STRING, `"foo\"bar"`, literal, "=", ""},
@@ -126,15 +126,16 @@ func TestScan(t *testing.T) {
 	src_linecount := newlineCount(string(source))
 	whitespace_linecount := newlineCount(whitespace)
 
+	index := 0
+
 	// error handler
 	eh := func(_ token.Position, msg string) {
-		t.Errorf("error handler called (msg = %s)", msg)
+		t.Errorf("%d: error handler called (msg = %s)", index, msg)
 	}
 
 	// verify scan
 	var s Scanner
 	s.Init(fset.AddFile("", fset.Base(), len(source)), source, eh, ScanComments)
-	index := 0
 	// epos is the expected position
 	epos := token.Position{
 		Filename: "",

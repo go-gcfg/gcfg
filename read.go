@@ -13,14 +13,17 @@ import (
 	"code.google.com/p/gcfg/token"
 )
 
+var unescape = map[rune]rune{'\\': '\\', '"': '"', 'n': '\n', 't': '\t'}
+
 // no error: invalid literals should be caught by scanner
 func unquote(s string) string {
 	u, q, esc := make([]rune, 0, len(s)), false, false
 	for _, c := range s {
 		if esc {
+			uc, ok := unescape[c]
 			switch {
-			case c == '\\' || c == '"':
-				u = append(u, c)
+			case ok:
+				u = append(u, uc)
 				fallthrough
 			case !q && c == '\n':
 				esc = false

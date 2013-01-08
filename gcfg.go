@@ -36,7 +36,6 @@
 //    - complete syntax documentation
 //  - reading
 //    - define internal representation structure
-//    - support \n and \t (values only)
 //    - support multi-value variables
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)

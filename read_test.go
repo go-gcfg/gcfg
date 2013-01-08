@@ -53,7 +53,11 @@ var readtests = []struct {
 	{"[section]\nname=\" value \"", &conf01{sect01{" value "}}, true},
 	{"\n[section]\nname=\"value ; cmnt\"", &conf01{sect01{"value ; cmnt"}}, true},
 	{"[section]\nname=\"val\" \"ue\"", &conf01{sect01{"val ue"}}, true},
-	{"[section]\nname=\"va\\\\l\\\"ue\"", &conf01{sect01{"va\\l\"ue"}}, true},
+	// escape sequences
+	{"[section]\nname=\"va\\\\lue\"", &conf01{sect01{"va\\lue"}}, true},
+	{"[section]\nname=\"va\\\"lue\"", &conf01{sect01{"va\"lue"}}, true},
+	{"[section]\nname=\"va\\nlue\"", &conf01{sect01{"va\nlue"}}, true},
+	{"[section]\nname=\"va\\tlue\"", &conf01{sect01{"va\tlue"}}, true},
 	// broken line
 	{"[section]\nname=value \\\n value", &conf01{sect01{"value  value"}}, true},
 	// long lines
@@ -106,6 +110,8 @@ var readtests = []struct {
 }}, {"subsections", []readtest{
 	{"\n[sub \"A\"]\nname=value", &conf04{map[string]*sect04{"A": &sect04{"value"}}}, true},
 	{"\n[sub \"b\"]\nname=value", &conf04{map[string]*sect04{"b": &sect04{"value"}}}, true},
+	{"\n[sub \"A\\\\\"]\nname=value", &conf04{map[string]*sect04{"A\\": &sect04{"value"}}}, true},
+	{"\n[sub \"A\\\"\"]\nname=value", &conf04{map[string]*sect04{"A\"": &sect04{"value"}}}, true},
 }}, {"errors", []readtest{
 	// error: invalid line
 	{"\n[section]\n=", &conf01{}, false},
@@ -130,6 +136,8 @@ var readtests = []struct {
 	{"\n[section]\nname=\\a", &conf01{}, false},
 	{"\n[section]\nname=\"val\\a\"", &conf01{}, false},
 	{"\n[section]\nname=val\\", &conf01{}, false},
+	{"\n[sub \"A\\\n\"]\nname=value", &conf04{}, false},
+	{"\n[sub \"A\\\t\"]\nname=value", &conf04{}, false},
 	// error: invalid broken line
 	{"[section]\nname=\"value \\\n value\"", &conf01{}, false},
 }},
