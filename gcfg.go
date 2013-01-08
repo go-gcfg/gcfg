@@ -32,14 +32,15 @@
 //    - define valid section and variable names
 //    - reconsider valid escape sequences
 //      (gitconfig doesn't support \r in value, \t in subsection name, etc.)
-//    - define handling of default value
+//    - define handling of "implicit value" for types other than bool
+//    - consider handling of numeric values (decimal only by default?)
 //    - complete syntax documentation
 //  - reading
 //    - define internal representation structure
 //    - support multi-value variables
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)
-//    - support pointer fields
+//    - support automatic derefereining of pointer fields (?)
 //    - support varying fields sets for subsections (?)
 //  - scanEnum
 //    - should use longest match (?)
