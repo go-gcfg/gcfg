@@ -217,7 +217,7 @@ func (s *Scanner) scanValString() string {
 	end := offs
 	inQuote := false
 loop:
-	for inQuote || s.ch != '\n' && s.ch != ';' && s.ch != '#' {
+	for inQuote || s.ch >= 0 && s.ch != '\n' && s.ch != ';' && s.ch != '#' {
 		ch := s.ch
 		s.next()
 		switch {

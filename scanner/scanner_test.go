@@ -217,6 +217,22 @@ func TestScan(t *testing.T) {
 	}
 }
 
+func TestScanValStringEOF(t *testing.T) {
+	var s Scanner
+	src := "= value"
+	f := fset.AddFile("src", fset.Base(), len(src))
+	s.Init(f, []byte(src), nil, 0)
+	s.Scan()              // =
+	s.Scan()              // value
+	_, tok, _ := s.Scan() // EOF
+	if tok != token.EOF {
+		t.Errorf("bad token: got %s, expected %s", tok, token.EOF)
+	}
+	if s.ErrorCount > 0 {
+		t.Error("scanning error")
+	}
+}
+
 // Verify that initializing the same scanner more then once works correctly.
 func TestInit(t *testing.T) {
 	var s Scanner

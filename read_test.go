@@ -120,6 +120,8 @@ var readtests = []struct {
 	{"\n[section \"nonexistent\"]\nname=value", &conf01{}, false},
 	// error: variable name not matched
 	{"\n[section]\nnonexistent=value", &conf01{}, false},
+	// error: missing end quote
+	{"[section]\nname=\"value", &conf01{}, false},
 }},
 }
 
@@ -134,22 +136,22 @@ func TestReadStringInto(t *testing.T) {
 			err := ReadStringInto(res, tt.gcfg)
 			if tt.ok {
 				if err != nil {
-					t.Errorf("%s fail: got error %v, wanted ok", id, err)
+					t.Errorf("%s failed; got error %v, wanted ok", id, err)
 					continue
 				} else if !reflect.DeepEqual(res, tt.exp) {
-					t.Errorf("%s fail: got %#v, wanted %#v", id, res, tt.exp)
+					t.Errorf("%s failed; got value %#v, wanted value %#v", id, res, tt.exp)
 					continue
 				}
 				if !testing.Short() {
-					t.Logf("%s pass: ok, %#v", id, res)
+					t.Logf("%s passed; got value %#v", id, res)
 				}
 			} else { // !tt.ok
 				if err == nil {
-					t.Errorf("%s fail: got %#v, wanted error", id, res)
+					t.Errorf("%s failed; got value %#v, wanted error", id, res)
 					continue
 				}
 				if !testing.Short() {
-					t.Logf("%s pass: !ok, %#v", id, err)
+					t.Logf("%s passed; got error %v", id, err)
 				}
 			}
 		}
@@ -160,7 +162,7 @@ func TestReadFileInto(t *testing.T) {
 	res := &struct{ Section struct{ Name string } }{}
 	err := ReadFileInto(res, "testdata/gcfg_test.gcfg")
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf(err.Error())
 	}
 	if "value" != res.Section.Name {
 		t.Errorf("got %q, wanted %q", res.Section.Name, "value")

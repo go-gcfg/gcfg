@@ -33,13 +33,17 @@ func unquote(s string) string {
 
 func readInto(config interface{}, fset *token.FileSet, file *token.File, src []byte) error {
 	var s scanner.Scanner
-	s.Init(file, src, nil, 0)
+	var errs scanner.ErrorList
+	s.Init(file, src, func(p token.Position, m string) { errs.Add(p, m) }, 0)
 	sect, sectsub := "", ""
 	pos, tok, lit := s.Scan()
 	errfn := func(msg string) error {
 		return fmt.Errorf("%s: %s", fset.Position(pos), msg)
 	}
 	for {
+		if errs.Len() > 0 {
+			return errs.Err()
+		}
 		switch tok {
 		case token.EOF:
 			return nil
@@ -47,17 +51,26 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 			pos, tok, lit = s.Scan()
 		case token.LBRACK:
 			pos, tok, lit = s.Scan()
+			if errs.Len() > 0 {
+				return errs.Err()
+			}
 			if tok != token.IDENT {
 				return errfn("expected section name")
 			}
 			sect, sectsub = lit, ""
 			pos, tok, lit = s.Scan()
+			if errs.Len() > 0 {
+				return errs.Err()
+			}
 			if tok == token.STRING {
 				sectsub = unquote(lit)
 				if sectsub == "" {
 					return errfn("empty subsection name")
 				}
 				pos, tok, lit = s.Scan()
+				if errs.Len() > 0 {
+					return errs.Err()
+				}
 			}
 			if tok != token.RBRACK {
 				if sectsub == "" {
@@ -75,6 +88,9 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 			}
 			n := lit
 			pos, tok, lit = s.Scan()
+			if errs.Len() > 0 {
+				return errs.Err()
+			}
 			var v string
 			if tok == token.EOF || tok == token.EOL || tok == token.COMMENT {
 				v = defaultValue
@@ -83,11 +99,17 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 					return errfn("expected '='")
 				}
 				pos, tok, lit = s.Scan()
+				if errs.Len() > 0 {
+					return errs.Err()
+				}
 				if tok != token.STRING {
 					return errfn("expected value")
 				}
 				v = unquote(lit)
 				pos, tok, lit = s.Scan()
+				if errs.Len() > 0 {
+					return errs.Err()
+				}
 				if tok != token.EOL && tok != token.EOF && tok != token.COMMENT {
 					return errfn("expected EOL, EOF, or comment")
 				}
