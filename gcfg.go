@@ -30,12 +30,14 @@
 // TODO:
 //  - format
 //    - define valid section and variable names
+//    - reconsider valid escape sequences
+//      (gitconfig doesn't support \r in value, \t in subsection name, etc.)
 //    - define handling of default value
 //    - complete syntax documentation
 //  - reading
 //    - define internal representation structure
+//    - support \n and \t (values only)
 //    - support multi-value variables
-//    - support breaking lines with backslash-newline
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)
 //    - support pointer fields

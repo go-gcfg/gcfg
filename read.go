@@ -18,12 +18,15 @@ func unquote(s string) string {
 	u, q, esc := make([]rune, 0, len(s)), false, false
 	for _, c := range s {
 		if esc {
-			if c != '\\' && c != '"' {
-				panic("invalid escape sequence")
+			switch {
+			case c == '\\' || c == '"':
+				u = append(u, c)
+				fallthrough
+			case !q && c == '\n':
+				esc = false
+				continue
 			}
-			esc = false
-			u = append(u, c)
-			continue
+			panic("invalid escape sequence")
 		}
 		switch c {
 		case '"':
