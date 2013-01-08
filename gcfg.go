@@ -36,7 +36,6 @@
 //    - define internal representation structure
 //    - support multi-value variables
 //    - support breaking lines with backslash-newline
-//    - support escaping in strings
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)
 //    - support pointer fields

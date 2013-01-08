@@ -53,6 +53,7 @@ var readtests = []struct {
 	{"[section]\nname=\" value \"", &conf01{sect01{" value "}}, true},
 	{"\n[section]\nname=\"value ; cmnt\"", &conf01{sect01{"value ; cmnt"}}, true},
 	{"[section]\nname=\"val\" \"ue\"", &conf01{sect01{"val ue"}}, true},
+	{"[section]\nname=\"va\\\\l\\\"ue\"", &conf01{sect01{"va\\l\"ue"}}, true},
 	// long lines
 	{sp4096 + "[section]\nname=value\n", &conf01{sect01{"value"}}, true},
 	{"[" + sp4096 + "section]\nname=value\n", &conf01{sect01{"value"}}, true},
@@ -122,6 +123,10 @@ var readtests = []struct {
 	{"\n[section]\nnonexistent=value", &conf01{}, false},
 	// error: missing end quote
 	{"[section]\nname=\"value", &conf01{}, false},
+	// error: invalid escape
+	{"\n[section]\nname=\\", &conf01{}, false},
+	{"\n[section]\nname=\"val\\a\"", &conf01{}, false},
+	{"\n[section]\nname=val\\", &conf01{}, false},
 }},
 }
 

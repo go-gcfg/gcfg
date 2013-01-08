@@ -13,20 +13,32 @@ import (
 	"code.google.com/p/gcfg/token"
 )
 
+// no error: invalid literals should be caught by scanner
 func unquote(s string) string {
-	u, q := make([]rune, 0, len(s)), false
+	u, q, esc := make([]rune, 0, len(s)), false, false
 	for _, c := range s {
+		if esc {
+			if c != '\\' && c != '"' {
+				panic("invalid escape sequence")
+			}
+			esc = false
+			u = append(u, c)
+			continue
+		}
 		switch c {
 		case '"':
 			q = !q
-			continue
+		case '\\':
+			esc = true
 		default:
 			u = append(u, c)
 		}
 	}
 	if q {
-		// should be caught by scanner
 		panic("missing end quote")
+	}
+	if esc {
+		panic("invalid escape sequence")
 	}
 	return string(u)
 }
