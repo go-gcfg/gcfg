@@ -147,31 +147,35 @@ func TestReadStringInto(t *testing.T) {
 	for _, tg := range readtests {
 		for i, tt := range tg.tests {
 			id := fmt.Sprintf("%s:%d", tg.group, i)
-			// get the type of the expected result
-			restyp := reflect.TypeOf(tt.exp).Elem()
-			// create a new instance to hold the actual result
-			res := reflect.New(restyp).Interface()
-			err := ReadStringInto(res, tt.gcfg)
-			if tt.ok {
-				if err != nil {
-					t.Errorf("%s fail: got error %v, wanted ok", id, err)
-					continue
-				} else if !reflect.DeepEqual(res, tt.exp) {
-					t.Errorf("%s fail: got value %#v, wanted value %#v", id, res, tt.exp)
-					continue
-				}
-				if !testing.Short() {
-					t.Logf("%s pass: got value %#v", id, res)
-				}
-			} else { // !tt.ok
-				if err == nil {
-					t.Errorf("%s fail: got value %#v, wanted error", id, res)
-					continue
-				}
-				if !testing.Short() {
-					t.Logf("%s pass: got error %v", id, err)
-				}
-			}
+			testRead(t, id, tt)
+		}
+	}
+}
+
+func testRead(t *testing.T, id string, tt readtest) {
+	// get the type of the expected result
+	restyp := reflect.TypeOf(tt.exp).Elem()
+	// create a new instance to hold the actual result
+	res := reflect.New(restyp).Interface()
+	err := ReadStringInto(res, tt.gcfg)
+	if tt.ok {
+		if err != nil {
+			t.Errorf("%s fail: got error %v, wanted ok", id, err)
+			return
+		} else if !reflect.DeepEqual(res, tt.exp) {
+			t.Errorf("%s fail: got value %#v, wanted value %#v", id, res, tt.exp)
+			return
+		}
+		if !testing.Short() {
+			t.Logf("%s pass: got value %#v", id, res)
+		}
+	} else { // !tt.ok
+		if err == nil {
+			t.Errorf("%s fail: got value %#v, wanted error", id, res)
+			return
+		}
+		if !testing.Short() {
+			t.Logf("%s pass: got error %v", id, err)
 		}
 	}
 }
