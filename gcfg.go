@@ -46,6 +46,10 @@
 // without a subsection name, its values are stored with the empty string used
 // as the key.
 //
+// The functions in this package panic if config is not a pointer to a struct,
+// or when a field is not of a suitable type (either a struct or a map with
+// string keys and pointer-to-struct values).
+//
 // Parsing of values
 //
 // The section structs in the config struct may contain arbitrary types.

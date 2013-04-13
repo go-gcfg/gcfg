@@ -148,15 +148,6 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 
 // ReadInto reads gcfg formatted data from reader and sets the values into the
 // corresponding fields in config.
-// Config must be a pointer to a struct conforming to the rules described in
-// "Data structure" above.
-//
-// ReadInto panics if config is not a pointer to a struct, or if it encounters a
-// field that is not of a suitable type (either a struct or a map with string
-// keys and pointer-to-struct values).
-//
-// See ReadStringInto for examples.
-//
 func ReadInto(config interface{}, reader io.Reader) error {
 	src, err := ioutil.ReadAll(reader)
 	if err != nil {
@@ -169,8 +160,6 @@ func ReadInto(config interface{}, reader io.Reader) error {
 
 // ReadStringInto reads gcfg formatted data from str and sets the values into
 // the corresponding fields in config.
-// ReadStringInfo is a wrapper for ReadInfo; see ReadInto(config, reader) for
-// detailed description of how data is read and set into config.
 func ReadStringInto(config interface{}, str string) error {
 	r := strings.NewReader(str)
 	return ReadInto(config, r)
@@ -178,8 +167,6 @@ func ReadStringInto(config interface{}, str string) error {
 
 // ReadFileInto reads gcfg formatted data from the file filename and sets the
 // values into the corresponding fields in config.
-// ReadFileInto is a wrapper for ReadInfo; see ReadInto(config, reader) for
-// detailed description of how data is read and set into config.
 func ReadFileInto(config interface{}, filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {

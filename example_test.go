@@ -61,3 +61,21 @@ color = black
 	fmt.Printf("%s %s\n", cfg.Profile["A"].Color, cfg.Profile["B"].Color)
 	// Output: white black
 }
+
+func ExampleReadStringInto_multivalue() {
+	cfgStr := `; Comment line
+[section]
+multi=value1
+multi=value2`
+	cfg := struct {
+		Section struct {
+			Multi []string
+		}
+	}{}
+	err := gcfg.ReadStringInto(&cfg, cfgStr)
+	if err != nil {
+		log.Fatalf("Failed to parse gcfg data: %s", err)
+	}
+	fmt.Println(cfg.Section.Multi)
+	// Output: [value1 value2]
+}
