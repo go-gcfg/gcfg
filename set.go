@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	// Default value string in case a value for a variable isn't provided.
-	defaultValue = "true"
+	// Implicit value string in case a value for a variable isn't provided.
+	implicitValue = "true"
 )
 
 func fieldFold(v reflect.Value, name string) reflect.Value {
@@ -60,26 +60,39 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		return fmt.Errorf("invalid variable: "+
 			"section %q subsection %q variable %q", sect, sub, name)
 	}
-	vAddr := vName.Addr().Interface()
-	switch v := vAddr.(type) {
+	vAddr, toAppend := reflect.Value{}, false
+	// unnamed slice type: append value to slice
+	if vName.Type().Name() == "" && vName.Kind() == reflect.Slice {
+		vAddr = reflect.New(vName.Type().Elem())
+		toAppend = true
+	} else {
+		vAddr = vName.Addr()
+	}
+	vAddrI := vAddr.Interface()
+	toParse := true
+	switch v := vAddrI.(type) {
 	case *string:
 		*v = value
-		return nil
+		toParse = false
 	case *bool:
-		vAddr = (*gbool)(v)
+		vAddrI = (*gbool)(v)
 	}
-	// attempt to read an extra rune to make sure the value is consumed
-	var r rune
-	n, err := fmt.Sscanf(value, "%v%c", vAddr, &r)
-	switch {
-	case n < 1 || n == 1 && err != io.EOF:
-		return fmt.Errorf("failed to parse %q as %v: %v", value, vName.Type(),
-			err)
-	case n > 1:
-		return fmt.Errorf("failed to parse %q as %v: extra characters", value,
-			vName.Type())
-	case n == 1 && err == io.EOF:
-		return nil
+	if toParse {
+		// attempt to read an extra rune to make sure the value is consumed
+		var r rune
+		n, err := fmt.Sscanf(value, "%v%c", vAddrI, &r)
+		switch {
+		case n < 1 || n == 1 && err != io.EOF:
+			return fmt.Errorf("failed to parse %q as %v: %v", value, vName.Type(),
+				err)
+		case n > 1:
+			return fmt.Errorf("failed to parse %q as %v: extra characters", value,
+				vName.Type())
+		}
+		// n == 1 && err == io.EOF
 	}
-	panic("never reached")
+	if toAppend {
+		vName.Set(reflect.Append(vName, vAddr.Elem()))
+	}
+	return nil
 }

@@ -27,6 +27,15 @@ type cBasicS2 struct {
 	Hyphen_In_Name string
 }
 
+type nonMulti []string
+
+type cMulti struct {
+	M1 cMultiS1
+	M2 cMultiS2
+}
+type cMultiS1 struct{ Multi []string }
+type cMultiS2 struct{ NonMulti nonMulti }
+
 type cSubs struct{ Sub map[string]*cSubsS1 }
 type cSubsS1 struct{ Name string }
 
@@ -104,6 +113,15 @@ var readtests = []struct {
 	{"\n[sub \"b\"]\nname=value", &cSubs{map[string]*cSubsS1{"b": &cSubsS1{"value"}}}, true},
 	{"\n[sub \"A\\\\\"]\nname=value", &cSubs{map[string]*cSubsS1{"A\\": &cSubsS1{"value"}}}, true},
 	{"\n[sub \"A\\\"\"]\nname=value", &cSubs{map[string]*cSubsS1{"A\"": &cSubsS1{"value"}}}, true},
+}}, {"multivalue", []readtest{
+	// unnamed slice type: treat as multi-value
+	{"\n[m1]", &cMulti{M1: cMultiS1{}}, true},
+	{"\n[m1]\nmulti=value", &cMulti{M1: cMultiS1{[]string{"value"}}}, true},
+	{"\n[m1]\nmulti=value1\nmulti=value2", &cMulti{M1: cMultiS1{[]string{"value1", "value2"}}}, true},
+	// named slice type: do not treat as multi-value
+	{"\n[m2]", &cMulti{}, true},
+	{"\n[m2]\nmulti=value", &cMulti{}, false},
+	{"\n[m2]\nmulti=value1\nmulti=value2", &cMulti{}, false},
 }}, {"errors", []readtest{ // scanning/parsing errors (except value parsing)
 	// invalid line
 	{"\n[section]\n=", &cBasic{}, false},
@@ -141,7 +159,7 @@ var readtests = []struct {
 	{"[section]\nbool=false", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=no", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=off", &cBool{cBoolS1{false}}, true},
-	// default value (true)
+	// implicit value (true)
 	{"[section]\nbool", &cBool{cBoolS1{true}}, true},
 	{"[section]\nbool=0", &cBool{cBoolS1{false}}, true},
 	// bool parse errors

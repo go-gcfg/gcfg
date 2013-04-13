@@ -111,7 +111,7 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 			}
 			var v string
 			if tok == token.EOF || tok == token.EOL || tok == token.COMMENT {
-				v = defaultValue
+				v = implicitValue
 			} else {
 				if tok != token.ASSIGN {
 					return errfn("expected '='")
@@ -148,38 +148,8 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 
 // ReadInto reads gcfg formatted data from reader and sets the values into the
 // corresponding fields in config.
-//
-// Config must be a pointer to a struct.
-// Each section corresponds to a struct field in config, and each variable in a
-// section corresponds to a data field in the section struct.
-// The name of the field must match the name of the section or variable,
-// ignoring case.
-// Hyphens in section and variable names correspond to underscores in field
-// names.
-//
-// For sections with subsections, the corresponding field in config must be a
-// map, rather than a struct, with string keys and pointer-to-struct values.
-// Values for subsection variables are stored in the map with the subsection
-// name used as the map key.
-// (Note that unlike section and variable names, subsection names are case
-// sensitive.)
-// When using a map, and there is a section with the same section name but
-// without a subsection name, its values are stored with the empty string used
-// as the key.
-//
-// The section structs in the config struct may contain arbitrary types.
-// For string fields, the (unquoted and unescaped) value string is assigned to
-// the field.
-// For bool fields, the field is set to true if the value is "true", "yes", "on"
-// or "1", and set to false if the value is "false", "no", "off" or "0",
-// ignoring case.
-// For all other types, fmt.Sscanf with the verb "%v" is used to parse the value
-// string and set it to the field.
-// This means that built-in Go types are parseable using the standard format,
-// and any user-defined type is parseable if it implements the fmt.Scanner
-// interface.
-// Note that the value is considered invalid unless fmt.Scanner fully consumes
-// the value string without error.
+// Config must be a pointer to a struct conforming to the rules described in
+// "Data structure" above.
 //
 // ReadInto panics if config is not a pointer to a struct, or if it encounters a
 // field that is not of a suitable type (either a struct or a map with string
