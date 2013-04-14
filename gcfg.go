@@ -2,8 +2,7 @@
 // "name=value" pairs grouped into sections (gcfg files).
 //
 // This package is still a work in progress; see the sections below for planned
-// changes. Apart from these, the API and syntax is expected (but not
-// guaranteed) to remain stable.
+// changes.
 //
 // Syntax
 //
@@ -22,10 +21,6 @@
 //      - section: '[secA]' -> '[secB]' -> '[secA]' is an error
 //      - subsection: '[sec "A"]' -> '[sec "B"]' -> '[sec "A"]' is an error
 //      - multivalued variable: 'multi=a' -> 'other=x' -> 'multi=b' is an error
-//
-// The package may be usable for handling some of the various "INI file" formats
-// used by some programs and libraries, but achieving or maintaining
-// compatibility with any of those is not a primary concern.
 //
 // Data structure
 //
