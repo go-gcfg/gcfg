@@ -71,6 +71,12 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 	vAddrI := vAddr.Interface()
 	toParse := true
 	switch v := vAddrI.(type) {
+	case textUnmarshaler:
+		err := v.UnmarshalText([]byte(value))
+		if err != nil {
+			return err
+		}
+		toParse = false
 	case *string:
 		*v = value
 		toParse = false

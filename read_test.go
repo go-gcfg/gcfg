@@ -29,6 +29,19 @@ type cBasicS2 struct {
 
 type nonMulti []string
 
+type unmarshalable string
+
+func (u *unmarshalable) UnmarshalText(text []byte) error {
+	s := string(text)
+	if s == "error" {
+		return fmt.Errorf("%s", s)
+	}
+	*u = unmarshalable(s)
+	return nil
+}
+
+var _ textUnmarshaler = new(unmarshalable)
+
 type cMulti struct {
 	M1 cMultiS1
 	M2 cMultiS2
@@ -41,6 +54,9 @@ type cSubsS1 struct{ Name string }
 
 type cBool struct{ Section cBoolS1 }
 type cBoolS1 struct{ Bool bool }
+
+type cTxUnm struct{ Section cTxUnmS1 }
+type cTxUnmS1 struct{ Name unmarshalable }
 
 type readtest struct {
 	gcfg string
@@ -172,6 +188,9 @@ var readtests = []struct {
 	{"[section]\nint=-1", &cBasic{Section: cBasicS1{Int: -1}}, true},
 	{"[section]\nint=0.2", &cBasic{}, false},
 	{"[section]\nint=1e3", &cBasic{}, false},
+}}, {"type:textUnmarshaler", []readtest{
+	{"[section]\nname=value", &cTxUnm{Section: cTxUnmS1{Name: "value"}}, true},
+	{"[section]\nname=error", &cTxUnm{}, false},
 }},
 }
 

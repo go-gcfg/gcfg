@@ -55,6 +55,9 @@
 // ignoring case.
 // Unnamed slice types (those whose type description starts with `[]`) are
 // handled as multi-value variables (each value is added to the slice).
+// For types implementing an UnmarshalText method with pointer receiver
+// (i.e. TextUnmarshaller interface in the "encoding" package in go1.2+),
+// this method is used to set the value.
 // For all other types, fmt.Sscanf with the verb "%v" is used to parse the value
 // string and set it to the field.
 // This means that built-in Go types are parseable using the standard format,
@@ -81,7 +84,6 @@
 //    - export scanEnum
 //      - should use longest match (?)
 //      - support matching on unique prefix (?)
-//    - support UnmarshalText method (encoding/TestUnmarshaller in go1.2+)
 //    - consider handling of numeric values (decimal only by default?)
 //    - define handling of "implicit value" for types other than bool
 //    - support automatic allocation and dereferencing for pointer fields
