@@ -71,20 +71,21 @@
 //      (consider supporting names starting with non-letter Unicode characters)
 //    - reconsider valid escape sequences
 //      (gitconfig doesn't support \r in value, \t in subsection name, etc.)
-//    - define handling of "implicit value" for types other than bool
-//    - consider handling of numeric values (decimal only by default?)
 //    - complete syntax documentation
-//  - reading
+//  - reading / parsing gcfg files
 //    - define internal representation structure
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)
-//    - support automatic dereferencing of pointer fields (?)
 //    - support varying fields sets for subsections (?)
-//  - simplify parsing for user-defined types
+//  - parsing / setting values
 //    - export scanEnum
 //      - should use longest match (?)
 //      - support matching on unique prefix (?)
-//    - declare an interface that is easier to implement than fmt.Scanner
+//    - support UnmarshalText method (encoding/TestUnmarshaller in go1.2+)
+//    - consider handling of numeric values (decimal only by default?)
+//    - define handling of "implicit value" for types other than bool
+//    - support automatic allocation and dereferencing for pointer fields
+//      - e.g. allow using *big.Int instead of big.Int
 //  - writing gcfg files
 //  - error handling
 //    - report position of extra characters in value

@@ -51,14 +51,10 @@ type readtest struct {
 var readtests = []struct {
 	group string
 	tests []readtest
-}{{"basic", []readtest{
-	// string value
+}{{"scanning", []readtest{
 	{"[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
-	{"[section]\nname=", &cBasic{Section: cBasicS1{Name: ""}}, true},
-	// non-string value
-	{"[section]\nint=1", &cBasic{Section: cBasicS1{Int: 1}}, true},
 	// hyphen in name
-	{"[hyphen-in-section]\nhyphen-in-name=value", &cBasic{Hyphen_In_Section: cBasicS2{"value"}}, true},
+	{"[hyphen-in-section]\nhyphen-in-name=value", &cBasic{Hyphen_In_Section: cBasicS2{Hyphen_In_Name: "value"}}, true},
 	// quoted string value
 	{"[section]\nname=\"\"", &cBasic{Section: cBasicS1{Name: ""}}, true},
 	{"[section]\nname=\" \"", &cBasic{Section: cBasicS1{Name: " "}}, true},
@@ -66,14 +62,22 @@ var readtests = []struct {
 	{"[section]\nname=\" value \"", &cBasic{Section: cBasicS1{Name: " value "}}, true},
 	{"\n[section]\nname=\"va ; lue\"", &cBasic{Section: cBasicS1{Name: "va ; lue"}}, true},
 	{"[section]\nname=\"val\" \"ue\"", &cBasic{Section: cBasicS1{Name: "val ue"}}, true},
+	{"[section]\nname=\"value", &cBasic{}, false},
 	// escape sequences
 	{"[section]\nname=\"va\\\\lue\"", &cBasic{Section: cBasicS1{Name: "va\\lue"}}, true},
 	{"[section]\nname=\"va\\\"lue\"", &cBasic{Section: cBasicS1{Name: "va\"lue"}}, true},
 	{"[section]\nname=\"va\\nlue\"", &cBasic{Section: cBasicS1{Name: "va\nlue"}}, true},
 	{"[section]\nname=\"va\\tlue\"", &cBasic{Section: cBasicS1{Name: "va\tlue"}}, true},
+	{"\n[section]\nname=\\", &cBasic{}, false},
+	{"\n[section]\nname=\\a", &cBasic{}, false},
+	{"\n[section]\nname=\"val\\a\"", &cBasic{}, false},
+	{"\n[section]\nname=val\\", &cBasic{}, false},
+	{"\n[sub \"A\\\n\"]\nname=value", &cSubs{}, false},
+	{"\n[sub \"A\\\t\"]\nname=value", &cSubs{}, false},
 	// broken line
 	{"[section]\nname=value \\\n value", &cBasic{Section: cBasicS1{Name: "value  value"}}, true},
-}}, {"whitespace", []readtest{
+	{"[section]\nname=\"value \\\n value\"", &cBasic{}, false},
+}}, {"scanning:whitespace", []readtest{
 	{" \n[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
 	{" [section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
 	{"\t[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
@@ -95,7 +99,7 @@ var readtests = []struct {
 	{"[section]\nname" + sp4096 + "=value\n", &cBasic{Section: cBasicS1{Name: "value"}}, true},
 	{"[section]\nname=" + sp4096 + "value\n", &cBasic{Section: cBasicS1{Name: "value"}}, true},
 	{"[section]\nname=value\n" + sp4096, &cBasic{Section: cBasicS1{Name: "value"}}, true},
-}}, {"comments", []readtest{
+}}, {"scanning:comments", []readtest{
 	{"; cmnt\n[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
 	{"# cmnt\n[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
 	{" ; cmnt\n[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
@@ -108,11 +112,30 @@ var readtests = []struct {
 	{"\n[section]\nname=value ; \"cmnt", &cBasic{Section: cBasicS1{Name: "value"}}, true},
 	{"\n[section]\nname=\"va ; lue\" ; cmnt", &cBasic{Section: cBasicS1{Name: "va ; lue"}}, true},
 	{"\n[section]\nname=; cmnt", &cBasic{Section: cBasicS1{Name: ""}}, true},
-}}, {"subsections", []readtest{
+}}, {"scanning:subsections", []readtest{
 	{"\n[sub \"A\"]\nname=value", &cSubs{map[string]*cSubsS1{"A": &cSubsS1{"value"}}}, true},
 	{"\n[sub \"b\"]\nname=value", &cSubs{map[string]*cSubsS1{"b": &cSubsS1{"value"}}}, true},
 	{"\n[sub \"A\\\\\"]\nname=value", &cSubs{map[string]*cSubsS1{"A\\": &cSubsS1{"value"}}}, true},
 	{"\n[sub \"A\\\"\"]\nname=value", &cSubs{map[string]*cSubsS1{"A\"": &cSubsS1{"value"}}}, true},
+}}, {"syntax", []readtest{
+	// invalid line
+	{"\n[section]\n=", &cBasic{}, false},
+	// no section
+	{"name=value", &cBasic{}, false},
+	// empty section
+	{"\n[]\nname=value", &cBasic{}, false},
+	// empty subsection
+	{"\n[sub \"\"]\nname=value", &cSubs{}, false},
+}}, {"setting", []readtest{
+	{"[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
+	// section name not matched
+	{"\n[nonexistent]\nname=value", &cBasic{}, false},
+	// subsection name not matched
+	{"\n[section \"nonexistent\"]\nname=value", &cBasic{}, false},
+	// variable name not matched
+	{"\n[section]\nnonexistent=value", &cBasic{}, false},
+	// hyphen in name
+	{"[hyphen-in-section]\nhyphen-in-name=value", &cBasic{Hyphen_In_Section: cBasicS2{Hyphen_In_Name: "value"}}, true},
 }}, {"multivalue", []readtest{
 	// unnamed slice type: treat as multi-value
 	{"\n[m1]", &cMulti{M1: cMultiS1{}}, true},
@@ -122,35 +145,10 @@ var readtests = []struct {
 	{"\n[m2]", &cMulti{}, true},
 	{"\n[m2]\nmulti=value", &cMulti{}, false},
 	{"\n[m2]\nmulti=value1\nmulti=value2", &cMulti{}, false},
-}}, {"errors", []readtest{ // scanning/parsing errors (except value parsing)
-	// invalid line
-	{"\n[section]\n=", &cBasic{}, false},
-	// no section
-	{"name=value", &cBasic{}, false},
-	// failed to parse
-	{"\n[section]\nbool=maybe", &cBool{cBoolS1{}}, false},
-	// empty section
-	{"\n[]\nname=value", &cBasic{}, false},
-	// empty subsection
-	{"\n[sub \"\"]\nname=value", &cSubs{}, false},
-	// section name not matched
-	{"\n[nonexistent]\nname=value", &cBasic{}, false},
-	// subsection name not matched
-	{"\n[section \"nonexistent\"]\nname=value", &cBasic{}, false},
-	// variable name not matched
-	{"\n[section]\nnonexistent=value", &cBasic{}, false},
-	// missing end quote
-	{"[section]\nname=\"value", &cBasic{}, false},
-	// invalid escape
-	{"\n[section]\nname=\\", &cBasic{}, false},
-	{"\n[section]\nname=\\a", &cBasic{}, false},
-	{"\n[section]\nname=\"val\\a\"", &cBasic{}, false},
-	{"\n[section]\nname=val\\", &cBasic{}, false},
-	{"\n[sub \"A\\\n\"]\nname=value", &cSubs{}, false},
-	{"\n[sub \"A\\\t\"]\nname=value", &cSubs{}, false},
-	// invalid broken line
-	{"[section]\nname=\"value \\\n value\"", &cBasic{}, false},
-}}, {"bool", []readtest{
+}}, {"type:string", []readtest{
+	{"[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
+	{"[section]\nname=", &cBasic{Section: cBasicS1{Name: ""}}, true},
+}}, {"type:bool", []readtest{
 	// explicit values
 	{"[section]\nbool=true", &cBool{cBoolS1{true}}, true},
 	{"[section]\nbool=yes", &cBool{cBoolS1{true}}, true},
@@ -159,13 +157,21 @@ var readtests = []struct {
 	{"[section]\nbool=false", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=no", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=off", &cBool{cBoolS1{false}}, true},
+	{"[section]\nbool=0", &cBool{cBoolS1{false}}, true},
 	// implicit value (true)
 	{"[section]\nbool", &cBool{cBoolS1{true}}, true},
-	{"[section]\nbool=0", &cBool{cBoolS1{false}}, true},
 	// bool parse errors
+	{"[section]\nbool=maybe", &cBool{}, false},
 	{"[section]\nbool=t", &cBool{}, false},
 	{"[section]\nbool=truer", &cBool{}, false},
+	{"[section]\nbool=2", &cBool{}, false},
 	{"[section]\nbool=-1", &cBool{}, false},
+}}, {"type:numeric", []readtest{
+	{"[section]\nint=0", &cBasic{Section: cBasicS1{Int: 0}}, true},
+	{"[section]\nint=1", &cBasic{Section: cBasicS1{Int: 1}}, true},
+	{"[section]\nint=-1", &cBasic{Section: cBasicS1{Int: -1}}, true},
+	{"[section]\nint=0.2", &cBasic{}, false},
+	{"[section]\nint=1e3", &cBasic{}, false},
 }},
 }
 
