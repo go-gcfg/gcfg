@@ -6,16 +6,18 @@ import (
 
 type gbool bool
 
-var gboolValues = map[string]interface{}{
+var gboolValues = map[string]gbool{
 	"true": true, "yes": true, "on": true, "1": true,
 	"false": false, "no": false, "off": false, "0": false}
 
-func (b *gbool) Scan(state fmt.ScanState, verb rune) error {
-	v, err := scanEnum(state, gboolValues, true)
-	if err != nil {
-		return err
+func (b *gbool) UnmarshalText(text []byte) error {
+	s := string(text)
+	v, ok := gboolValues[s]
+	if !ok {
+		return fmt.Errorf("failed to parse %#q as bool", s)
 	}
-	bb, _ := v.(bool) // cannot be non-bool
-	*b = gbool(bb)
+	*b = gbool(v)
 	return nil
 }
+
+var _ textUnmarshaler = new(gbool)

@@ -81,9 +81,6 @@
 //    - support declaring encoding (?)
 //    - support varying fields sets for subsections (?)
 //  - parsing / setting values
-//    - export scanEnum
-//      - should use longest match (?)
-//      - support matching on unique prefix (?)
 //    - consider handling of numeric values (decimal only by default?)
 //    - define handling of "implicit value" for types other than bool
 //    - support automatic allocation and dereferencing for pointer fields

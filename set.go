@@ -69,21 +69,18 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		vAddr = vName.Addr()
 	}
 	vAddrI := vAddr.Interface()
-	toParse := true
+	if v, ok := vAddrI.(*bool); ok {
+		vAddrI = (*gbool)(v)
+	}
 	switch v := vAddrI.(type) {
+	case *string:
+		*v = value
 	case textUnmarshaler:
 		err := v.UnmarshalText([]byte(value))
 		if err != nil {
 			return err
 		}
-		toParse = false
-	case *string:
-		*v = value
-		toParse = false
-	case *bool:
-		vAddrI = (*gbool)(v)
-	}
-	if toParse {
+	default:
 		// attempt to read an extra rune to make sure the value is consumed
 		var r rune
 		n, err := fmt.Sscanf(value, "%v%c", vAddrI, &r)
