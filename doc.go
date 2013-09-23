@@ -58,8 +58,9 @@
 // For types implementing an UnmarshalText method with pointer receiver
 // (i.e. TextUnmarshaller interface in the "encoding" package in go1.2+),
 // this method is used to set the value.
-// For all other types, fmt.Sscanf with the verb "%v" is used to parse the value
-// string and set it to the field.
+// For all other types, fmt.Sscanf is used to parse the value string and set it
+// to the field. The verb used is "%d" for [u]int(|8|16|32|64) and "%v" other
+// types (including user-defined types with [u]int* as the underlying type).
 // This means that built-in Go types are parseable using the standard format,
 // and any user-defined type is parseable if it implements the fmt.Scanner
 // interface.
@@ -81,7 +82,6 @@
 //    - support declaring encoding (?)
 //    - support varying fields sets for subsections (?)
 //  - parsing / setting values
-//    - consider handling of numeric values (decimal only by default?)
 //    - define handling of "implicit value" for types other than bool
 //    - support automatic allocation and dereferencing for pointer fields
 //      - e.g. allow using *big.Int instead of big.Int

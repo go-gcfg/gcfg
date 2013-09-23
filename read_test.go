@@ -2,6 +2,7 @@ package gcfg
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -45,9 +46,11 @@ var _ textUnmarshaler = new(unmarshalable)
 type cMulti struct {
 	M1 cMultiS1
 	M2 cMultiS2
+	M3 cMultiS3
 }
 type cMultiS1 struct{ Multi []string }
 type cMultiS2 struct{ NonMulti nonMulti }
+type cMultiS3 struct{ MultiInt []int }
 
 type cSubs struct{ Sub map[string]*cSubsS1 }
 type cSubsS1 struct{ Name string }
@@ -57,6 +60,15 @@ type cBoolS1 struct{ Bool bool }
 
 type cTxUnm struct{ Section cTxUnmS1 }
 type cTxUnmS1 struct{ Name unmarshalable }
+
+type cNum struct {
+	N1 cNumS1
+	N2 cNumS2
+	N3 cNumS3
+}
+type cNumS1 struct{ Int int }
+type cNumS2 struct{ MultiInt []int }
+type cNumS3 struct{ FileMode os.FileMode }
 
 type readtest struct {
 	gcfg string
@@ -188,6 +200,11 @@ var readtests = []struct {
 	{"[section]\nint=-1", &cBasic{Section: cBasicS1{Int: -1}}, true},
 	{"[section]\nint=0.2", &cBasic{}, false},
 	{"[section]\nint=1e3", &cBasic{}, false},
+	// primitive [u]int(|8|16|32|64) is parsed as decimal (not octal)
+	{"[n1]\nint=010", &cNum{N1: cNumS1{Int: 10}}, true},
+	{"[n2]\nmultiint=010", &cNum{N2: cNumS2{MultiInt: []int{10}}}, true},
+	// octal allowed for named type
+	{"[n3]\nfilemode=0777", &cNum{N3: cNumS3{FileMode: 0777}}, true},
 }}, {"type:textUnmarshaler", []readtest{
 	{"[section]\nname=value", &cTxUnm{Section: cTxUnmS1{Name: "value"}}, true},
 	{"[section]\nname=error", &cTxUnm{}, false},
