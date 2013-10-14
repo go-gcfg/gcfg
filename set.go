@@ -19,6 +19,55 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 	})
 }
 
+type setter func(destp interface{}, val string) error
+
+var setterUnsupportedType = fmt.Errorf("unsupported type")
+
+var setters = []setter{
+	stringSetter, boolSetter, textUnmarshalerSetter, scanSetter,
+}
+
+func stringSetter(d interface{}, val string) error {
+	dsp, ok := d.(*string)
+	if !ok {
+		return setterUnsupportedType
+	}
+	*dsp = val
+	return nil
+}
+
+func textUnmarshalerSetter(d interface{}, val string) error {
+	dtu, ok := d.(textUnmarshaler)
+	if !ok {
+		return setterUnsupportedType
+	}
+	return dtu.UnmarshalText([]byte(val))
+}
+
+func boolSetter(d interface{}, val string) error {
+	dbp, ok := d.(*bool)
+	if !ok {
+		return setterUnsupportedType
+	}
+	return (*gbool)(dbp).UnmarshalText([]byte(val))
+}
+
+func scanSetter(d interface{}, val string) error {
+	t := reflect.ValueOf(d).Elem().Type()
+	verb := scanverb(t)
+	// attempt to read an extra rune to make sure the value is consumed
+	var r rune
+	n, err := fmt.Sscanf(val, "%"+string(verb)+"%c", d, &r)
+	switch {
+	case n < 1 || n == 1 && err != io.EOF:
+		return fmt.Errorf("failed to parse %q as %v: %v", val, t, err)
+	case n > 1:
+		return fmt.Errorf("failed to parse %q as %v: extra characters", val, t)
+	}
+	// n == 1 && err == io.EOF
+	return nil
+}
+
 var primitiveVerbs = map[reflect.Kind]rune{
 	reflect.Int:    'd',
 	reflect.Int8:   'd',
@@ -95,31 +144,20 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		vAddr = vName.Addr()
 	}
 	vAddrI := vAddr.Interface()
-	if v, ok := vAddrI.(*bool); ok {
-		vAddrI = (*gbool)(v)
-	}
-	switch v := vAddrI.(type) {
-	case *string:
-		*v = value
-	case textUnmarshaler:
-		err := v.UnmarshalText([]byte(value))
-		if err != nil {
+	err, ok := error(nil), false
+	for _, s := range setters {
+		err = s(vAddrI, value)
+		if err == nil {
+			ok = true
+			break
+		}
+		if err != setterUnsupportedType {
 			return err
 		}
-	default:
-		// attempt to read an extra rune to make sure the value is consumed
-		var r rune
-		verb := scanverb(vAddr.Elem().Type())
-		n, err := fmt.Sscanf(value, "%"+string(verb)+"%c", vAddrI, &r)
-		switch {
-		case n < 1 || n == 1 && err != io.EOF:
-			return fmt.Errorf("failed to parse %q as %v: %v", value, vName.Type(),
-				err)
-		case n > 1:
-			return fmt.Errorf("failed to parse %q as %v: extra characters", value,
-				vName.Type())
-		}
-		// n == 1 && err == io.EOF
+	}
+	if !ok {
+		// in case all setters returned setterUnsupportedType
+		return err
 	}
 	if isMulti {
 		vName.Set(reflect.Append(vName, vAddr.Elem()))
