@@ -68,27 +68,23 @@ func scanSetter(d interface{}, val string) error {
 	return nil
 }
 
-var primitiveVerbs = map[reflect.Kind]rune{
-	reflect.Int:    'd',
-	reflect.Int8:   'd',
-	reflect.Int16:  'd',
-	reflect.Int32:  'd',
-	reflect.Int64:  'd',
-	reflect.Uint:   'd',
-	reflect.Uint8:  'd',
-	reflect.Uint16: 'd',
-	reflect.Uint32: 'd',
-	reflect.Uint64: 'd',
+var typeVerbs = map[reflect.Type]rune{
+	reflect.TypeOf(int(0)):    'd',
+	reflect.TypeOf(int8(0)):   'd',
+	reflect.TypeOf(int16(0)):  'd',
+	reflect.TypeOf(int32(0)):  'd',
+	reflect.TypeOf(int64(0)):  'd',
+	reflect.TypeOf(uint(0)):   'd',
+	reflect.TypeOf(uint8(0)):  'd',
+	reflect.TypeOf(uint16(0)): 'd',
+	reflect.TypeOf(uint32(0)): 'd',
+	reflect.TypeOf(uint64(0)): 'd',
 }
 
 func scanverb(t reflect.Type) rune {
-	if t.PkgPath() != "" {
-		// user-defined type
-		return 'v'
-	}
-	verb, ok := primitiveVerbs[t.Kind()]
+	verb, ok := typeVerbs[t]
 	if !ok {
-		verb = 'v'
+		return 'v'
 	}
 	return verb
 }
