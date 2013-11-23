@@ -41,6 +41,23 @@ switch=on`
 	// Output: true
 }
 
+func ExampleReadStringInto_hyphens() {
+	cfgStr := `; Comment line
+[section-name]
+variable-name=value # comment`
+	cfg := struct {
+		Section_Name struct {
+			Variable_Name string
+		}
+	}{}
+	err := gcfg.ReadStringInto(&cfg, cfgStr)
+	if err != nil {
+		log.Fatalf("Failed to parse gcfg data: %s", err)
+	}
+	fmt.Println(cfg.Section_Name.Variable_Name)
+	// Output: value
+}
+
 func ExampleReadStringInto_subsections() {
 	cfgStr := `; Comment line
 [profile "A"]

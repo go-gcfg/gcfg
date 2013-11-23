@@ -29,8 +29,8 @@
 // variable in a section corresponds to a data field in the section struct.
 // The name of the field must match the name of the section or variable,
 // ignoring case.
-// Hyphens in section and variable names correspond to underscores in field
-// names.
+// Hyphens '-' in section and variable names correspond to underscores '_' in
+// field names.
 // For sections with subsections, the corresponding field in config must be a
 // map, rather than a struct, with string keys and pointer-to-struct values.
 // Values for subsection variables are stored in the map with the subsection
