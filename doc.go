@@ -37,7 +37,8 @@
 // field names.
 // Fields must be exported; to use a section or variable name starting with a
 // letter that is neither upper- or lower-case, prefix the field name with 'X'.
-// (See https://code.google.com/p/go/issues/detail?id=5763#4 .)
+// (See https://code.google.com/p/go/issues/detail?id=5763#c4 .)
+//
 // For sections with subsections, the corresponding field in config must be a
 // map, rather than a struct, with string keys and pointer-to-struct values.
 // Values for subsection variables are stored in the map with the subsection
@@ -54,26 +55,30 @@
 //
 // Parsing of values
 //
-// The section structs in the config struct may contain arbitrary types.
-// For string fields, the (unquoted and unescaped) value string is assigned to
-// the field.
+// The section structs in the config struct may contain single-valued or
+// multi-valued variables. Multi-valued variables must be of an unnamed slice
+// type (that is, a type starting with `[]`); for these, each individual value
+// is parsed and added to the slice.
+//
+// Single-valued variables are handled based on the type as follows. For string
+// fields, the value string is assigned to the field, after unquoting and
+// unescaping as needed.
 //
 // For bool fields, the field is set to true if the value is "true", "yes", "on"
 // or "1", and set to false if the value is "false", "no", "off" or "0",
-// ignoring case.
-// Unnamed slice types (those whose type description starts with `[]`) are
-// handled as multi-value variables (each value is added to the slice).
-// For types implementing an UnmarshalText method with pointer receiver
-// (i.e. TextUnmarshaller interface in the "encoding" package in go1.2+),
-// this method is used to set the value.
-// For all other types, fmt.Sscanf is used to parse the value string and set it
-// to the field. The verb used is "%d" for [u]int(|8|16|32|64) and "%v" other
-// types (including user-defined types with [u]int* as the underlying type).
-// This means that built-in Go types are parseable using the standard format,
-// and any user-defined type is parseable if it implements the fmt.Scanner
-// interface.
-// Note that the value is considered invalid unless fmt.Scanner fully consumes
-// the value string without error.
+// ignoring case. In addition, for single-valued bool fields, the equals sign
+// and the value can be omitted; in such case the value is set to true.
+//
+// For types implementing the encoding.TextUnmarshaler interface, the
+// UnmarshalText method is used to set the value. Implementing this method is
+// the recommended way for parsing user-defined types.
+//
+// Predefined integer types [u]int(|8|16|32|64) are parsed as decimal, using
+// fmt.Sscanf with the "%d" verb. (This is to prevent unintuitively handling
+// zero-padded numbers as octal.) All other types are parsed using fmt.Sscanf
+// with the "%v" verb. (Note that this includes types with [u]int* as the
+// underlying type, such as os.FileMode. Implementing UnmarshalText is
+// recommended in case parsing as octal is undesirable.)
 //
 // TODO
 //
@@ -81,7 +86,7 @@
 //  - syntax
 //    - reconsider valid escape sequences
 //      (gitconfig doesn't support \r in value, \t in subsection name, etc.)
-//    - complete syntax documentation
+//    - self-contained syntax documentation
 //  - reading / parsing gcfg files
 //    - define internal representation structure
 //    - support multiple inputs (readers, strings, files)
