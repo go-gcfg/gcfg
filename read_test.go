@@ -43,6 +43,17 @@ func (u *unmarshalable) UnmarshalText(text []byte) error {
 
 var _ textUnmarshaler = new(unmarshalable)
 
+type cUni struct {
+	X甲       cUniS1
+	XSection cUniS2
+}
+type cUniS1 struct {
+	X乙 string
+}
+type cUniS2 struct {
+	XName string
+}
+
 type cMulti struct {
 	M1 cMultiS1
 	M2 cMultiS2
@@ -164,6 +175,10 @@ var readtests = []struct {
 	{"\n[section]\nnonexistent=value", &cBasic{}, false},
 	// hyphen in name
 	{"[hyphen-in-section]\nhyphen-in-name=value", &cBasic{Hyphen_In_Section: cBasicS2{Hyphen_In_Name: "value"}}, true},
+	// 'X' prefix for non-upper/lower-case letters
+	{"[甲]\n乙=丙", &cUni{X甲: cUniS1{X乙: "丙"}}, true},
+	//{"[section]\nxname=value", &cBasic{XSection: cBasicS4{XName: "value"}}, false},
+	//{"[xsection]\nname=value", &cBasic{XSection: cBasicS4{XName: "value"}}, false},
 }}, {"multivalue", []readtest{
 	// unnamed slice type: treat as multi-value
 	{"\n[m1]", &cMulti{M1: cMultiS1{}}, true},
@@ -256,5 +271,16 @@ func TestReadFileInto(t *testing.T) {
 	}
 	if "value" != res.Section.Name {
 		t.Errorf("got %q, wanted %q", res.Section.Name, "value")
+	}
+}
+
+func TestReadFileIntoUnicode(t *testing.T) {
+	res := &struct{ X甲 struct{ X乙 string } }{}
+	err := ReadFileInto(res, "testdata/gcfg_unicode_test.gcfg")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if "丙" != res.X甲.X乙 {
+		t.Errorf("got %q, wanted %q", res.X甲.X乙, "丙")
 	}
 }

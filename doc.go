@@ -13,6 +13,10 @@
 //    - must be encoded in UTF-8 (for now) and must not contain the 0 byte
 //    - include and "path" type is not supported
 //      (path type may be implementable as a user-defined type)
+//  - internationalization
+//    - section and variable names can contain unicode letters, unicode digits
+//      (as defined in http://golang.org/ref/spec#Characters ) and hyphens
+//      (U+002D), starting with a unicode letter
 //  - disallow potentially ambiguous or misleading definitions:
 //    - `[sec.sub]` format is not allowed (deprecated in gitconfig)
 //    - `[sec ""]` is not allowed
@@ -31,6 +35,9 @@
 // ignoring case.
 // Hyphens '-' in section and variable names correspond to underscores '_' in
 // field names.
+// Fields must be exported; to use a section or variable name starting with a
+// letter that is neither upper- or lower-case, prefix the field name with 'X'.
+// (See https://code.google.com/p/go/issues/detail?id=5763#4 .)
 // For sections with subsections, the corresponding field in config must be a
 // map, rather than a struct, with string keys and pointer-to-struct values.
 // Values for subsection variables are stored in the map with the subsection
@@ -50,6 +57,7 @@
 // The section structs in the config struct may contain arbitrary types.
 // For string fields, the (unquoted and unescaped) value string is assigned to
 // the field.
+//
 // For bool fields, the field is set to true if the value is "true", "yes", "on"
 // or "1", and set to false if the value is "false", "no", "off" or "0",
 // ignoring case.
@@ -71,8 +79,6 @@
 //
 // The following is a list of changes under consideration:
 //  - syntax
-//    - define valid section and variable names
-//      (consider supporting names starting with non-letter Unicode characters)
 //    - reconsider valid escape sequences
 //      (gitconfig doesn't support \r in value, \t in subsection name, etc.)
 //    - complete syntax documentation

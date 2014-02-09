@@ -5,6 +5,8 @@ import (
 	"io"
 	"reflect"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 const (
@@ -13,7 +15,12 @@ const (
 )
 
 func fieldFold(v reflect.Value, name string) reflect.Value {
-	n := strings.Replace(name, "-", "_", -1)
+	var n string
+	r0, _ := utf8.DecodeRuneInString(name)
+	if unicode.IsLetter(r0) && !unicode.IsLower(r0) && !unicode.IsUpper(r0) {
+		n = "X"
+	}
+	n += strings.Replace(name, "-", "_", -1)
 	return v.FieldByNameFunc(func(fieldName string) bool {
 		return strings.EqualFold(n, fieldName)
 	})

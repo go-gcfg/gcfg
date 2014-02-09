@@ -96,3 +96,20 @@ multi=value2`
 	fmt.Println(cfg.Section.Multi)
 	// Output: [value1 value2]
 }
+
+func ExampleReadStringInto_unicode() {
+	cfgStr := `; Comment line
+[甲]
+乙=丙 # comment`
+	cfg := struct {
+		X甲 struct {
+			X乙 string
+		}
+	}{}
+	err := gcfg.ReadStringInto(&cfg, cfgStr)
+	if err != nil {
+		log.Fatalf("Failed to parse gcfg data: %s", err)
+	}
+	fmt.Println(cfg.X甲.X乙)
+	// Output: 丙
+}
