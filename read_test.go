@@ -19,6 +19,8 @@ const (
 type cBasic struct {
 	Section           cBasicS1
 	Hyphen_In_Section cBasicS2
+	unexported        cBasicS1
+	Exported          cBasicS3
 }
 type cBasicS1 struct {
 	Name string
@@ -26,6 +28,9 @@ type cBasicS1 struct {
 }
 type cBasicS2 struct {
 	Hyphen_In_Name string
+}
+type cBasicS3 struct {
+	unexported string
 }
 
 type nonMulti []string
@@ -175,6 +180,9 @@ var readtests = []struct {
 	{"\n[section]\nnonexistent=value", &cBasic{}, false},
 	// hyphen in name
 	{"[hyphen-in-section]\nhyphen-in-name=value", &cBasic{Hyphen_In_Section: cBasicS2{Hyphen_In_Name: "value"}}, true},
+	// ignore unexported fields
+	{"[unexported]\nname=value", &cBasic{}, false},
+	{"[exported]\nunexported=value", &cBasic{}, false},
 	// 'X' prefix for non-upper/lower-case letters
 	{"[甲]\n乙=丙", &cUni{X甲: cUniS1{X乙: "丙"}}, true},
 	//{"[section]\nxname=value", &cBasic{XSection: cBasicS4{XName: "value"}}, false},

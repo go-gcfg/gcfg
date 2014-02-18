@@ -22,7 +22,8 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 	}
 	n += strings.Replace(name, "-", "_", -1)
 	return v.FieldByNameFunc(func(fieldName string) bool {
-		return strings.EqualFold(n, fieldName)
+		return v.FieldByName(fieldName).CanSet() &&
+			strings.EqualFold(n, fieldName)
 	})
 }
 
