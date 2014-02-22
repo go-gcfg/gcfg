@@ -205,10 +205,12 @@ var readtests = []struct {
 	{"[section]\nbool=yes", &cBool{cBoolS1{true}}, true},
 	{"[section]\nbool=on", &cBool{cBoolS1{true}}, true},
 	{"[section]\nbool=1", &cBool{cBoolS1{true}}, true},
+	{"[section]\nbool=tRuE", &cBool{cBoolS1{true}}, true},
 	{"[section]\nbool=false", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=no", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=off", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=0", &cBool{cBoolS1{false}}, true},
+	{"[section]\nbool=NO", &cBool{cBoolS1{false}}, true},
 	// implicit value (true)
 	{"[section]\nbool", &cBool{cBoolS1{true}}, true},
 	// bool parse errors
