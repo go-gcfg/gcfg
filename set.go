@@ -14,6 +14,19 @@ const (
 	implicitValue = "true"
 )
 
+type tag struct {
+	ident string
+}
+
+func newTag(t string) tag {
+	idx := strings.IndexRune(t, ',')
+	if idx < 0 {
+		idx = len(t)
+	}
+	id := t[0:idx]
+	return tag{ident: id}
+}
+
 func fieldFold(v reflect.Value, name string) reflect.Value {
 	var n string
 	r0, _ := utf8.DecodeRuneInString(name)
@@ -22,8 +35,16 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 	}
 	n += strings.Replace(name, "-", "_", -1)
 	return v.FieldByNameFunc(func(fieldName string) bool {
-		return v.FieldByName(fieldName).CanSet() &&
-			strings.EqualFold(n, fieldName)
+		if !v.FieldByName(fieldName).CanSet() {
+			return false
+		}
+		f, _ := v.Type().FieldByName(fieldName)
+		t := newTag(f.Tag.Get("gcfg"))
+		if t.ident != "" {
+			return strings.EqualFold(t.ident, name)
+		} else {
+			return strings.EqualFold(n, fieldName)
+		}
 	})
 }
 

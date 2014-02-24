@@ -21,6 +21,7 @@ type cBasic struct {
 	Hyphen_In_Section cBasicS2
 	unexported        cBasicS1
 	Exported          cBasicS3
+	TagName           cBasicS1 `gcfg:"tag-name"`
 }
 type cBasicS1 struct {
 	Name string
@@ -187,6 +188,8 @@ var readtests = []struct {
 	{"[甲]\n乙=丙", &cUni{X甲: cUniS1{X乙: "丙"}}, true},
 	//{"[section]\nxname=value", &cBasic{XSection: cBasicS4{XName: "value"}}, false},
 	//{"[xsection]\nname=value", &cBasic{XSection: cBasicS4{XName: "value"}}, false},
+	// name specified as struct tag
+	{"[tag-name]\nname=value", &cBasic{TagName: cBasicS1{Name: "value"}}, true},
 }}, {"multivalue", []readtest{
 	// unnamed slice type: treat as multi-value
 	{"\n[m1]", &cMulti{M1: cMultiS1{}}, true},

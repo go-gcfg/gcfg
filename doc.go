@@ -31,10 +31,10 @@
 // The functions in this package read values into a user-defined struct.
 // Each section corresponds to a struct field in the config struct, and each
 // variable in a section corresponds to a data field in the section struct.
-// The name of the field must match the name of the section or variable,
-// ignoring case.
-// Hyphens '-' in section and variable names correspond to underscores '_' in
-// field names.
+// The mapping of each section or variable name to fields is done either based
+// on the "gcfg" struct tag or by matching the name of the section or variable,
+// ignoring case. In the latter case, hyphens '-' in section and variable names
+// correspond to underscores '_' in field names.
 // Fields must be exported; to use a section or variable name starting with a
 // letter that is neither upper- or lower-case, prefix the field name with 'X'.
 // (See https://code.google.com/p/go/issues/detail?id=5763#c4 .)
