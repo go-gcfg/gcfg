@@ -7,6 +7,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"code.google.com/p/gcfg/types"
 )
 
 const (
@@ -42,51 +44,89 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 		t := newTag(f.Tag.Get("gcfg"))
 		if t.ident != "" {
 			return strings.EqualFold(t.ident, name)
-		} else {
-			return strings.EqualFold(n, fieldName)
 		}
+		return strings.EqualFold(n, fieldName)
 	})
 }
 
 type setter func(destp interface{}, val string) error
 
-var setterUnsupportedType = fmt.Errorf("unsupported type")
+var errUnsupportedType = fmt.Errorf("unsupported type")
 
 var setters = []setter{
-	stringSetter, boolSetter, textUnmarshalerSetter, scanSetter,
-}
-
-func stringSetter(d interface{}, val string) error {
-	dsp, ok := d.(*string)
-	if !ok {
-		return setterUnsupportedType
-	}
-	*dsp = val
-	return nil
+	textUnmarshalerSetter, typeSetter, kindSetter, scanSetter,
 }
 
 func textUnmarshalerSetter(d interface{}, val string) error {
 	dtu, ok := d.(textUnmarshaler)
 	if !ok {
-		return setterUnsupportedType
+		return errUnsupportedType
 	}
 	return dtu.UnmarshalText([]byte(val))
 }
 
 func boolSetter(d interface{}, val string) error {
-	dbp, ok := d.(*bool)
-	if !ok {
-		return setterUnsupportedType
+	b, err := types.ParseBool(val)
+	if err == nil {
+		reflect.ValueOf(d).Elem().Set(reflect.ValueOf(b))
 	}
-	return (*gbool)(dbp).UnmarshalText([]byte(val))
+	return err
+}
+
+func intSetterDecHex(d interface{}, val string) error {
+	return types.ParseInt(d, val, types.Dec+types.Hex)
+}
+
+func stringSetter(d interface{}, val string) error {
+	dsp, ok := d.(*string)
+	if !ok {
+		return errUnsupportedType
+	}
+	*dsp = val
+	return nil
+}
+
+var kindSetters = map[reflect.Kind]setter{
+	reflect.String: stringSetter,
+	reflect.Bool:   boolSetter,
+}
+
+var typeSetters = map[reflect.Type]setter{
+	reflect.TypeOf(int(0)):    intSetterDecHex,
+	reflect.TypeOf(int8(0)):   intSetterDecHex,
+	reflect.TypeOf(int16(0)):  intSetterDecHex,
+	reflect.TypeOf(int32(0)):  intSetterDecHex,
+	reflect.TypeOf(int64(0)):  intSetterDecHex,
+	reflect.TypeOf(uint(0)):   intSetterDecHex,
+	reflect.TypeOf(uint8(0)):  intSetterDecHex,
+	reflect.TypeOf(uint16(0)): intSetterDecHex,
+	reflect.TypeOf(uint32(0)): intSetterDecHex,
+	reflect.TypeOf(uint64(0)): intSetterDecHex,
+}
+
+func typeSetter(d interface{}, val string) error {
+	t := reflect.ValueOf(d).Elem().Type()
+	setter, ok := typeSetters[t]
+	if !ok {
+		return errUnsupportedType
+	}
+	return setter(d, val)
+}
+
+func kindSetter(d interface{}, val string) error {
+	k := reflect.ValueOf(d).Elem().Kind()
+	setter, ok := kindSetters[k]
+	if !ok {
+		return errUnsupportedType
+	}
+	return setter(d, val)
 }
 
 func scanSetter(d interface{}, val string) error {
 	t := reflect.ValueOf(d).Elem().Type()
-	verb := scanverb(t)
 	// attempt to read an extra rune to make sure the value is consumed
 	var r rune
-	n, err := fmt.Sscanf(val, "%"+string(verb)+"%c", d, &r)
+	n, err := fmt.Sscanf(val, "%v%c", d, &r)
 	switch {
 	case n < 1 || n == 1 && err != io.EOF:
 		return fmt.Errorf("failed to parse %q as %v: %v", val, t, err)
@@ -95,27 +135,6 @@ func scanSetter(d interface{}, val string) error {
 	}
 	// n == 1 && err == io.EOF
 	return nil
-}
-
-var typeVerbs = map[reflect.Type]rune{
-	reflect.TypeOf(int(0)):    'd',
-	reflect.TypeOf(int8(0)):   'd',
-	reflect.TypeOf(int16(0)):  'd',
-	reflect.TypeOf(int32(0)):  'd',
-	reflect.TypeOf(int64(0)):  'd',
-	reflect.TypeOf(uint(0)):   'd',
-	reflect.TypeOf(uint8(0)):  'd',
-	reflect.TypeOf(uint16(0)): 'd',
-	reflect.TypeOf(uint32(0)): 'd',
-	reflect.TypeOf(uint64(0)): 'd',
-}
-
-func scanverb(t reflect.Type) rune {
-	verb, ok := typeVerbs[t]
-	if !ok {
-		return 'v'
-	}
-	return verb
 }
 
 func set(cfg interface{}, sect, sub, name, value string) error {
@@ -176,12 +195,12 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 			ok = true
 			break
 		}
-		if err != setterUnsupportedType {
+		if err != errUnsupportedType {
 			return err
 		}
 	}
 	if !ok {
-		// in case all setters returned setterUnsupportedType
+		// in case all setters returned errUnsupportedType
 		return err
 	}
 	if isMulti {

@@ -60,25 +60,28 @@
 // type (that is, a type starting with `[]`); for these, each individual value
 // is parsed and added to the slice.
 //
-// Single-valued variables are handled based on the type as follows. For string
-// fields, the value string is assigned to the field, after unquoting and
-// unescaping as needed.
-//
-// For bool fields, the field is set to true if the value is "true", "yes", "on"
-// or "1", and set to false if the value is "false", "no", "off" or "0",
-// ignoring case. In addition, for single-valued bool fields, the equals sign
-// and the value can be omitted; in such case the value is set to true.
-//
+// Single-valued variables are handled based on the type as follows.
 // For types implementing the encoding.TextUnmarshaler interface, the
 // UnmarshalText method is used to set the value. Implementing this method is
 // the recommended way for parsing user-defined types.
 //
-// Predefined integer types [u]int(|8|16|32|64) are parsed as decimal, using
-// fmt.Sscanf with the "%d" verb. (This is to prevent unintuitively handling
-// zero-padded numbers as octal.) All other types are parsed using fmt.Sscanf
-// with the "%v" verb. (Note that this includes types with [u]int* as the
-// underlying type, such as os.FileMode. Implementing UnmarshalText is
-// recommended in case parsing as octal is undesirable.)
+// For fields of string kind, the value string is assigned to the field, after
+// unquoting and unescaping as needed.
+// For fields of bool kind, the field is set to true if the value is "true",
+// "yes", "on" or "1", and set to false if the value is "false", "no", "off" or
+// "0", ignoring case. In addition, for single-valued bool fields, the equals
+// sign and the value can be omitted; in such case the value is set to true.
+//
+// Predefined integer types [u]int(|8|16|32|64) are parsed as decimal or
+// hexadecimal (if having '0x' prefix). (This is to prevent unintuitively
+// handling zero-padded numbers as octal.) All other types are parsed using
+// fmt.Sscanf with the "%v" verb. (Note that this includes types having [u]int*
+// as the underlying type, such as os.FileMode, thus allowing octal values.
+// Implementing UnmarshalText is recommended in case parsing as octal is
+// undesirable.)
+//
+// The types subpackage for provides helpers for parsing "enum-like" and integer
+// types.
 //
 // TODO
 //
