@@ -61,6 +61,9 @@
 // is parsed and added to the slice.
 //
 // Single-valued variables are handled based on the type as follows.
+// Unnamed pointer types (that is, types starting with `*`) are dereferenced,
+// and if necessary, a new instance is allocated.
+//
 // For types implementing the encoding.TextUnmarshaler interface, the
 // UnmarshalText method is used to set the value. Implementing this method is
 // the recommended way for parsing user-defined types.
@@ -72,13 +75,16 @@
 // "0", ignoring case. In addition, for single-valued bool fields, the equals
 // sign and the value can be omitted; in such case the value is set to true.
 //
-// Predefined integer types [u]int(|8|16|32|64) are parsed as decimal or
-// hexadecimal (if having '0x' prefix). (This is to prevent unintuitively
-// handling zero-padded numbers as octal.) All other types are parsed using
-// fmt.Sscanf with the "%v" verb. (Note that this includes types having [u]int*
-// as the underlying type, such as os.FileMode, thus allowing octal values.
-// Implementing UnmarshalText is recommended in case parsing as octal is
-// undesirable.)
+// Predefined integer types [u]int(|8|16|32|64) and big.Int are parsed as
+// decimal or hexadecimal (if having '0x' prefix). (This is to prevent
+// unintuitively handling zero-padded numbers as octal.) Other types having
+// [u]int* as the underlying type, such as os.FileMode and uintptr allow
+// decimal, hexadecimal, or octal values.
+// Parsing mode for integer types can be overridden using the struct tag option
+// ",int=mode" where mode is a combination of the 'd', 'h', and 'o' characters
+// (each standing for decimal, hexadecimal, and octal, respectively.)
+//
+// All other types are parsed using fmt.Sscanf with the "%v" verb.
 //
 // The types subpackage for provides helpers for parsing "enum-like" and integer
 // types.
@@ -97,8 +103,6 @@
 //    - support varying fields sets for subsections (?)
 //  - parsing / setting values
 //    - define handling of "implicit value" for types other than bool
-//    - support automatic allocation and dereferencing for pointer fields
-//      - e.g. allow using *big.Int instead of big.Int
 //  - writing gcfg files
 //  - error handling
 //    - report position of extra characters in value

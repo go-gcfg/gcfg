@@ -2,6 +2,7 @@ package gcfg
 
 import (
 	"fmt"
+	"math/big"
 	"os"
 	"reflect"
 	"testing"
@@ -24,8 +25,9 @@ type cBasic struct {
 	TagName           cBasicS1 `gcfg:"tag-name"`
 }
 type cBasicS1 struct {
-	Name string
-	Int  int
+	Name  string
+	Int   int
+	PName *string
 }
 type cBasicS2 struct {
 	Hyphen_In_Name string
@@ -86,14 +88,21 @@ type cNum struct {
 type cNumS1 struct {
 	Int    int
 	IntDHO int `gcfg:",int=dho"`
+	Big    *big.Int
 }
-type cNumS2 struct{ MultiInt []int }
+type cNumS2 struct {
+	MultiInt []int
+	MultiBig []*big.Int
+}
 type cNumS3 struct{ FileMode os.FileMode }
-
 type readtest struct {
 	gcfg string
 	exp  interface{}
 	ok   bool
+}
+
+func newString(s string) *string {
+	return &s
 }
 
 var readtests = []struct {
@@ -176,6 +185,9 @@ var readtests = []struct {
 	{"\n[sub \"\"]\nname=value", &cSubs{}, false},
 }}, {"setting", []readtest{
 	{"[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
+	// pointer
+	{"[section]", &cBasic{Section: cBasicS1{PName: nil}}, true},
+	{"[section]\npname=value", &cBasic{Section: cBasicS1{PName: newString("value")}}, true},
 	// section name not matched
 	{"\n[nonexistent]\nname=value", &cBasic{}, false},
 	// subsection name not matched
@@ -231,10 +243,14 @@ var readtests = []struct {
 	{"[section]\nint=-1", &cBasic{Section: cBasicS1{Int: -1}}, true},
 	{"[section]\nint=0.2", &cBasic{}, false},
 	{"[section]\nint=1e3", &cBasic{}, false},
-	// primitive [u]int(|8|16|32|64) is parsed as dec or hex (not octal)
+	// primitive [u]int(|8|16|32|64) and big.Int is parsed as dec or hex (not octal)
 	{"[n1]\nint=010", &cNum{N1: cNumS1{Int: 10}}, true},
 	{"[n1]\nint=0x10", &cNum{N1: cNumS1{Int: 0x10}}, true},
+	{"[n1]\nbig=1", &cNum{N1: cNumS1{Big: big.NewInt(1)}}, true},
+	{"[n1]\nbig=0x10", &cNum{N1: cNumS1{Big: big.NewInt(0x10)}}, true},
+	{"[n1]\nbig=010", &cNum{N1: cNumS1{Big: big.NewInt(10)}}, true},
 	{"[n2]\nmultiint=010", &cNum{N2: cNumS2{MultiInt: []int{10}}}, true},
+	{"[n2]\nmultibig=010", &cNum{N2: cNumS2{MultiBig: []*big.Int{big.NewInt(10)}}}, true},
 	// set parse mode for int types via struct tag
 	{"[n1]\nintdho=010", &cNum{N1: cNumS1{IntDHO: 010}}, true},
 	// octal allowed for named type

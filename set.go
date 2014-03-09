@@ -3,6 +3,7 @@ package gcfg
 import (
 	"fmt"
 	"io"
+	"math/big"
 	"reflect"
 	"strings"
 	"unicode"
@@ -62,7 +63,7 @@ type setter func(destp interface{}, val string, t tag) error
 var errUnsupportedType = fmt.Errorf("unsupported type")
 
 var setters = []setter{
-	textUnmarshalerSetter, typeSetter, kindSetter, scanSetter,
+	typeSetter, textUnmarshalerSetter, kindSetter, scanSetter,
 }
 
 func textUnmarshalerSetter(d interface{}, val string, t tag) error {
@@ -107,6 +108,7 @@ var typeModes = map[reflect.Type]types.IntMode{
 	reflect.TypeOf(uint32(0)): types.Dec | types.Hex,
 	reflect.TypeOf(uint64(0)): types.Dec | types.Hex,
 	// use default mode (allow dec/hex/oct) for uintptr type
+	reflect.TypeOf(big.Int{}): types.Dec | types.Hex,
 }
 
 func intModeDefault(t reflect.Type) types.IntMode {
@@ -151,11 +153,11 @@ var kindSetters = map[reflect.Kind]setter{
 }
 
 var typeSetters = map[reflect.Type]setter{
-// for future extension
+	reflect.TypeOf(big.Int{}): intSetter,
 }
 
 func typeSetter(d interface{}, val string, tt tag) error {
-	t := reflect.ValueOf(d).Elem().Type()
+	t := reflect.ValueOf(d).Type().Elem()
 	setter, ok := typeSetters[t]
 	if !ok {
 		return errUnsupportedType
@@ -164,7 +166,7 @@ func typeSetter(d interface{}, val string, tt tag) error {
 }
 
 func kindSetter(d interface{}, val string, tt tag) error {
-	k := reflect.ValueOf(d).Elem().Kind()
+	k := reflect.ValueOf(d).Type().Elem().Kind()
 	setter, ok := kindSetters[k]
 	if !ok {
 		return errUnsupportedType
@@ -223,19 +225,31 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		return fmt.Errorf("invalid subsection: "+
 			"section %q subsection %q", sect, sub)
 	}
-	vName, t := fieldFold(vSect, name)
-	if !vName.IsValid() {
+	vVar, t := fieldFold(vSect, name)
+	if !vVar.IsValid() {
 		return fmt.Errorf("invalid variable: "+
 			"section %q subsection %q variable %q", sect, sub, name)
 	}
-	var vAddr reflect.Value
+	// vVal is either single-valued var, or newly allocated value within multi-valued var
+	var vVal reflect.Value
 	// multi-value if unnamed slice type
-	isMulti := vName.Type().Name() == "" && vName.Kind() == reflect.Slice
+	isMulti := vVar.Type().Name() == "" && vVar.Kind() == reflect.Slice
 	if isMulti {
-		// create new value and append to slice later
-		vAddr = reflect.New(vName.Type().Elem())
+		vVal = reflect.New(vVar.Type().Elem()).Elem()
 	} else {
-		vAddr = vName.Addr()
+		vVal = vVar
+	}
+	isDeref := vVal.Type().Name() == "" && vVal.Type().Kind() == reflect.Ptr
+	isNew := isDeref && vVal.IsNil()
+	// vAddr is address of value to set (dereferenced & allocated as needed)
+	var vAddr reflect.Value
+	switch {
+	case isNew:
+		vAddr = reflect.New(vVal.Type().Elem())
+	case isDeref && !isNew:
+		vAddr = vVal
+	default:
+		vAddr = vVal.Addr()
 	}
 	vAddrI := vAddr.Interface()
 	err, ok := error(nil), false
@@ -253,8 +267,11 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		// in case all setters returned errUnsupportedType
 		return err
 	}
-	if isMulti {
-		vName.Set(reflect.Append(vName, vAddr.Elem()))
+	if isNew { // set reference if it was dereferenced and newly allocated
+		vVal.Set(vAddr)
+	}
+	if isMulti { // append if multi-valued
+		vVar.Set(reflect.Append(vVar, vVal))
 	}
 	return nil
 }
