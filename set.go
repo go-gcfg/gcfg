@@ -17,26 +17,30 @@ const (
 )
 
 type tag struct {
-	ident string
+	ident   string
+	intMode string
 }
 
-func newTag(t string) tag {
-	idx := strings.IndexRune(t, ',')
-	if idx < 0 {
-		idx = len(t)
+func newTag(ts string) tag {
+	t := tag{}
+	s := strings.Split(ts, ",")
+	t.ident = s[0]
+	for _, tse := range s[1:] {
+		if strings.HasPrefix(tse, "int=") {
+			t.intMode = tse[len("int="):]
+		}
 	}
-	id := t[0:idx]
-	return tag{ident: id}
+	return t
 }
 
-func fieldFold(v reflect.Value, name string) reflect.Value {
+func fieldFold(v reflect.Value, name string) (reflect.Value, tag) {
 	var n string
 	r0, _ := utf8.DecodeRuneInString(name)
 	if unicode.IsLetter(r0) && !unicode.IsLower(r0) && !unicode.IsUpper(r0) {
 		n = "X"
 	}
 	n += strings.Replace(name, "-", "_", -1)
-	return v.FieldByNameFunc(func(fieldName string) bool {
+	f, ok := v.Type().FieldByNameFunc(func(fieldName string) bool {
 		if !v.FieldByName(fieldName).CanSet() {
 			return false
 		}
@@ -47,9 +51,13 @@ func fieldFold(v reflect.Value, name string) reflect.Value {
 		}
 		return strings.EqualFold(n, fieldName)
 	})
+	if !ok {
+		return reflect.Value{}, tag{}
+	}
+	return v.FieldByName(f.Name), newTag(f.Tag.Get("gcfg"))
 }
 
-type setter func(destp interface{}, val string) error
+type setter func(destp interface{}, val string, t tag) error
 
 var errUnsupportedType = fmt.Errorf("unsupported type")
 
@@ -57,7 +65,7 @@ var setters = []setter{
 	textUnmarshalerSetter, typeSetter, kindSetter, scanSetter,
 }
 
-func textUnmarshalerSetter(d interface{}, val string) error {
+func textUnmarshalerSetter(d interface{}, val string, t tag) error {
 	dtu, ok := d.(textUnmarshaler)
 	if !ok {
 		return errUnsupportedType
@@ -65,7 +73,7 @@ func textUnmarshalerSetter(d interface{}, val string) error {
 	return dtu.UnmarshalText([]byte(val))
 }
 
-func boolSetter(d interface{}, val string) error {
+func boolSetter(d interface{}, val string, t tag) error {
 	b, err := types.ParseBool(val)
 	if err == nil {
 		reflect.ValueOf(d).Elem().Set(reflect.ValueOf(b))
@@ -73,11 +81,51 @@ func boolSetter(d interface{}, val string) error {
 	return err
 }
 
-func intSetterDecHex(d interface{}, val string) error {
-	return types.ParseInt(d, val, types.Dec+types.Hex)
+func intMode(mode string) types.IntMode {
+	var m types.IntMode
+	if strings.ContainsAny(mode, "dD") {
+		m |= types.Dec
+	}
+	if strings.ContainsAny(mode, "hH") {
+		m |= types.Hex
+	}
+	if strings.ContainsAny(mode, "oO") {
+		m |= types.Oct
+	}
+	return m
 }
 
-func stringSetter(d interface{}, val string) error {
+var typeModes = map[reflect.Type]types.IntMode{
+	reflect.TypeOf(int(0)):    types.Dec | types.Hex,
+	reflect.TypeOf(int8(0)):   types.Dec | types.Hex,
+	reflect.TypeOf(int16(0)):  types.Dec | types.Hex,
+	reflect.TypeOf(int32(0)):  types.Dec | types.Hex,
+	reflect.TypeOf(int64(0)):  types.Dec | types.Hex,
+	reflect.TypeOf(uint(0)):   types.Dec | types.Hex,
+	reflect.TypeOf(uint8(0)):  types.Dec | types.Hex,
+	reflect.TypeOf(uint16(0)): types.Dec | types.Hex,
+	reflect.TypeOf(uint32(0)): types.Dec | types.Hex,
+	reflect.TypeOf(uint64(0)): types.Dec | types.Hex,
+	// use default mode (allow dec/hex/oct) for uintptr type
+}
+
+func intModeDefault(t reflect.Type) types.IntMode {
+	m, ok := typeModes[t]
+	if !ok {
+		m = types.Dec | types.Hex | types.Oct
+	}
+	return m
+}
+
+func intSetter(d interface{}, val string, t tag) error {
+	mode := intMode(t.intMode)
+	if mode == 0 {
+		mode = intModeDefault(reflect.TypeOf(d).Elem())
+	}
+	return types.ParseInt(d, val, mode)
+}
+
+func stringSetter(d interface{}, val string, t tag) error {
 	dsp, ok := d.(*string)
 	if !ok {
 		return errUnsupportedType
@@ -87,42 +135,44 @@ func stringSetter(d interface{}, val string) error {
 }
 
 var kindSetters = map[reflect.Kind]setter{
-	reflect.String: stringSetter,
-	reflect.Bool:   boolSetter,
+	reflect.String:  stringSetter,
+	reflect.Bool:    boolSetter,
+	reflect.Int:     intSetter,
+	reflect.Int8:    intSetter,
+	reflect.Int16:   intSetter,
+	reflect.Int32:   intSetter,
+	reflect.Int64:   intSetter,
+	reflect.Uint:    intSetter,
+	reflect.Uint8:   intSetter,
+	reflect.Uint16:  intSetter,
+	reflect.Uint32:  intSetter,
+	reflect.Uint64:  intSetter,
+	reflect.Uintptr: intSetter,
 }
 
 var typeSetters = map[reflect.Type]setter{
-	reflect.TypeOf(int(0)):    intSetterDecHex,
-	reflect.TypeOf(int8(0)):   intSetterDecHex,
-	reflect.TypeOf(int16(0)):  intSetterDecHex,
-	reflect.TypeOf(int32(0)):  intSetterDecHex,
-	reflect.TypeOf(int64(0)):  intSetterDecHex,
-	reflect.TypeOf(uint(0)):   intSetterDecHex,
-	reflect.TypeOf(uint8(0)):  intSetterDecHex,
-	reflect.TypeOf(uint16(0)): intSetterDecHex,
-	reflect.TypeOf(uint32(0)): intSetterDecHex,
-	reflect.TypeOf(uint64(0)): intSetterDecHex,
+// for future extension
 }
 
-func typeSetter(d interface{}, val string) error {
+func typeSetter(d interface{}, val string, tt tag) error {
 	t := reflect.ValueOf(d).Elem().Type()
 	setter, ok := typeSetters[t]
 	if !ok {
 		return errUnsupportedType
 	}
-	return setter(d, val)
+	return setter(d, val, tt)
 }
 
-func kindSetter(d interface{}, val string) error {
+func kindSetter(d interface{}, val string, tt tag) error {
 	k := reflect.ValueOf(d).Elem().Kind()
 	setter, ok := kindSetters[k]
 	if !ok {
 		return errUnsupportedType
 	}
-	return setter(d, val)
+	return setter(d, val, tt)
 }
 
-func scanSetter(d interface{}, val string) error {
+func scanSetter(d interface{}, val string, tt tag) error {
 	t := reflect.ValueOf(d).Elem().Type()
 	// attempt to read an extra rune to make sure the value is consumed
 	var r rune
@@ -143,7 +193,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		panic(fmt.Errorf("config must be a pointer to a struct"))
 	}
 	vCfg := vPCfg.Elem()
-	vSect := fieldFold(vCfg, sect)
+	vSect, _ := fieldFold(vCfg, sect)
 	if !vSect.IsValid() {
 		return fmt.Errorf("invalid section: section %q", sect)
 	}
@@ -173,7 +223,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 		return fmt.Errorf("invalid subsection: "+
 			"section %q subsection %q", sect, sub)
 	}
-	vName := fieldFold(vSect, name)
+	vName, t := fieldFold(vSect, name)
 	if !vName.IsValid() {
 		return fmt.Errorf("invalid variable: "+
 			"section %q subsection %q variable %q", sect, sub, name)
@@ -190,7 +240,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 	vAddrI := vAddr.Interface()
 	err, ok := error(nil), false
 	for _, s := range setters {
-		err = s(vAddrI, value)
+		err = s(vAddrI, value, t)
 		if err == nil {
 			ok = true
 			break

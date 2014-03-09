@@ -83,7 +83,10 @@ type cNum struct {
 	N2 cNumS2
 	N3 cNumS3
 }
-type cNumS1 struct{ Int int }
+type cNumS1 struct {
+	Int    int
+	IntDHO int `gcfg:",int=dho"`
+}
 type cNumS2 struct{ MultiInt []int }
 type cNumS3 struct{ FileMode os.FileMode }
 
@@ -228,9 +231,12 @@ var readtests = []struct {
 	{"[section]\nint=-1", &cBasic{Section: cBasicS1{Int: -1}}, true},
 	{"[section]\nint=0.2", &cBasic{}, false},
 	{"[section]\nint=1e3", &cBasic{}, false},
-	// primitive [u]int(|8|16|32|64) is parsed as decimal (not octal)
+	// primitive [u]int(|8|16|32|64) is parsed as dec or hex (not octal)
 	{"[n1]\nint=010", &cNum{N1: cNumS1{Int: 10}}, true},
+	{"[n1]\nint=0x10", &cNum{N1: cNumS1{Int: 0x10}}, true},
 	{"[n2]\nmultiint=010", &cNum{N2: cNumS2{MultiInt: []int{10}}}, true},
+	// set parse mode for int types via struct tag
+	{"[n1]\nintdho=010", &cNum{N1: cNumS1{IntDHO: 010}}, true},
 	// octal allowed for named type
 	{"[n3]\nfilemode=0777", &cNum{N3: cNumS3{FileMode: 0777}}, true},
 }}, {"type:textUnmarshaler", []readtest{
