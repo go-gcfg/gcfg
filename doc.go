@@ -92,10 +92,13 @@
 // TODO
 //
 // The following is a list of changes under consideration:
+//  - documentation
+//    - self-contained syntax documentation
+//    - more practical examples
+//    - move TODOs to issue tracker (eventually)
 //  - syntax
 //    - reconsider valid escape sequences
 //      (gitconfig doesn't support \r in value, \t in subsection name, etc.)
-//    - self-contained syntax documentation
 //  - reading / parsing gcfg files
 //    - define internal representation structure
 //    - support multiple inputs (readers, strings, files)
@@ -108,6 +111,5 @@
 //    - report position of extra characters in value
 //    - make error context accessible programmatically?
 //    - limit input size?
-//  - move TODOs to issue tracker (eventually)
 //
 package gcfg
