@@ -2,8 +2,6 @@ package types
 
 import (
 	"fmt"
-	"io"
-	"reflect"
 	"strings"
 )
 
@@ -84,19 +82,5 @@ func ParseInt(intptr interface{}, val string, mode IntMode) error {
 	if verb == 0 {
 		panic("unsupported mode")
 	}
-	return scanFully(intptr, val, verb)
-}
-
-func scanFully(intptr interface{}, val string, verb byte) error {
-	t := reflect.ValueOf(intptr).Elem().Type()
-	var r rune
-	n, err := fmt.Sscanf(val, "%"+string(verb)+"%c", intptr, &r)
-	switch {
-	case n < 1 || n == 1 && err != io.EOF:
-		return fmt.Errorf("failed to parse %q as %v: %v", val, t, err)
-	case n > 1:
-		return fmt.Errorf("failed to parse %q as %v: extra characters", val, t)
-	}
-	// n == 1 && err == io.EOF
-	return nil
+	return ScanFully(intptr, val, verb)
 }

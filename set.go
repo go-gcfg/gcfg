@@ -2,7 +2,6 @@ package gcfg
 
 import (
 	"fmt"
-	"io"
 	"math/big"
 	"reflect"
 	"strings"
@@ -175,18 +174,7 @@ func kindSetter(d interface{}, val string, tt tag) error {
 }
 
 func scanSetter(d interface{}, val string, tt tag) error {
-	t := reflect.ValueOf(d).Elem().Type()
-	// attempt to read an extra rune to make sure the value is consumed
-	var r rune
-	n, err := fmt.Sscanf(val, "%v%c", d, &r)
-	switch {
-	case n < 1 || n == 1 && err != io.EOF:
-		return fmt.Errorf("failed to parse %q as %v: %v", val, t, err)
-	case n > 1:
-		return fmt.Errorf("failed to parse %q as %v: extra characters", val, t)
-	}
-	// n == 1 && err == io.EOF
-	return nil
+	return types.ScanFully(d, val, 'v')
 }
 
 func set(cfg interface{}, sect, sub, name, value string) error {

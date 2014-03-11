@@ -108,7 +108,6 @@
 //    - define handling of "implicit value" for types other than bool
 //  - writing gcfg files
 //  - error handling
-//    - report position of extra characters in value
 //    - make error context accessible programmatically?
 //    - limit input size?
 //
