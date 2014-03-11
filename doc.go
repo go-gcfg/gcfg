@@ -56,9 +56,9 @@
 // Parsing of values
 //
 // The section structs in the config struct may contain single-valued or
-// multi-valued variables. Multi-valued variables must be of an unnamed slice
-// type (that is, a type starting with `[]`); for these, each individual value
-// is parsed and added to the slice.
+// multi-valued variables. Variables of unnamed slice type (that is, a type
+// starting with `[]`) are treated as multi-value; all others (including named
+// slice types) are treated as single-valued variables.
 //
 // Single-valued variables are handled based on the type as follows.
 // Unnamed pointer types (that is, types starting with `*`) are dereferenced,
@@ -72,8 +72,9 @@
 // unquoting and unescaping as needed.
 // For fields of bool kind, the field is set to true if the value is "true",
 // "yes", "on" or "1", and set to false if the value is "false", "no", "off" or
-// "0", ignoring case. In addition, for single-valued bool fields, the equals
-// sign and the value can be omitted; in such case the value is set to true.
+// "0", ignoring case. In addition, single-valued bool fields can be specified
+// with a "blank" value (variable name without equals sign and value); in such
+// case the value is set to true.
 //
 // Predefined integer types [u]int(|8|16|32|64) and big.Int are parsed as
 // decimal or hexadecimal (if having '0x' prefix). (This is to prevent
@@ -85,6 +86,11 @@
 // (each standing for decimal, hexadecimal, and octal, respectively.)
 //
 // All other types are parsed using fmt.Sscanf with the "%v" verb.
+//
+// For multi-valued variables, each individual value is parsed as above and
+// appended to the slice. If the first value is specified as a "blank" value
+// (variable name without equals sign and value), a new slice is allocated;
+// that is any values previously set in the slice will be ignored.
 //
 // The types subpackage for provides helpers for parsing "enum-like" and integer
 // types.
@@ -104,8 +110,6 @@
 //    - support multiple inputs (readers, strings, files)
 //    - support declaring encoding (?)
 //    - support varying fields sets for subsections (?)
-//  - parsing / setting values
-//    - define handling of "implicit value" for types other than bool
 //  - writing gcfg files
 //  - error handling
 //    - make error context accessible programmatically?

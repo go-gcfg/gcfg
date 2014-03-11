@@ -210,6 +210,8 @@ var readtests = []struct {
 	{"\n[m1]", &cMulti{M1: cMultiS1{}}, true},
 	{"\n[m1]\nmulti=value", &cMulti{M1: cMultiS1{[]string{"value"}}}, true},
 	{"\n[m1]\nmulti=value1\nmulti=value2", &cMulti{M1: cMultiS1{[]string{"value1", "value2"}}}, true},
+	// "blank" empties multi-valued slice -- here same result as above
+	{"\n[m1]\nmulti\nmulti=value1\nmulti=value2", &cMulti{M1: cMultiS1{[]string{"value1", "value2"}}}, true},
 	// named slice type: do not treat as multi-value
 	{"\n[m2]", &cMulti{}, true},
 	{"\n[m2]\nmulti=value", &cMulti{}, false},
@@ -229,7 +231,7 @@ var readtests = []struct {
 	{"[section]\nbool=off", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=0", &cBool{cBoolS1{false}}, true},
 	{"[section]\nbool=NO", &cBool{cBoolS1{false}}, true},
-	// implicit value (true)
+	// "blank" value handled as true
 	{"[section]\nbool", &cBool{cBoolS1{true}}, true},
 	// bool parse errors
 	{"[section]\nbool=maybe", &cBool{}, false},
@@ -270,11 +272,21 @@ func TestReadStringInto(t *testing.T) {
 	}
 }
 
+func TestReadStringIntoMultiBlankPreset(t *testing.T) {
+	tt := readtest{"\n[m1]\nmulti\nmulti=value1\nmulti=value2", &cMulti{M1: cMultiS1{[]string{"value1", "value2"}}}, true}
+	cfg := &cMulti{M1: cMultiS1{[]string{"preset1", "preset2"}}}
+	testReadInto(t, "multi:blank", tt, cfg)
+}
+
 func testRead(t *testing.T, id string, tt readtest) {
 	// get the type of the expected result
 	restyp := reflect.TypeOf(tt.exp).Elem()
 	// create a new instance to hold the actual result
 	res := reflect.New(restyp).Interface()
+	testReadInto(t, id, tt, res)
+}
+
+func testReadInto(t *testing.T, id string, tt readtest, res interface{}) {
 	err := ReadStringInto(res, tt.gcfg)
 	if tt.ok {
 		if err != nil {
