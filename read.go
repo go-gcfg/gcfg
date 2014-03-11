@@ -109,10 +109,8 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 			if errs.Len() > 0 {
 				return errs.Err()
 			}
-			var v string
-			if tok == token.EOF || tok == token.EOL || tok == token.COMMENT {
-				v = implicitValue
-			} else {
+			blank, v := tok == token.EOF || tok == token.EOL || tok == token.COMMENT, ""
+			if !blank {
 				if tok != token.ASSIGN {
 					return errfn("expected '='")
 				}
@@ -132,7 +130,7 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 					return errfn("expected EOL, EOF, or comment")
 				}
 			}
-			err := set(config, sect, sectsub, n, v)
+			err := set(config, sect, sectsub, n, blank, v)
 			if err != nil {
 				return err
 			}

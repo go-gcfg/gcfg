@@ -11,11 +11,6 @@ import (
 	"code.google.com/p/gcfg/types"
 )
 
-const (
-	// Implicit value string in case a value for a variable isn't provided.
-	implicitValue = "true"
-)
-
 type tag struct {
 	ident   string
 	intMode string
@@ -57,23 +52,31 @@ func fieldFold(v reflect.Value, name string) (reflect.Value, tag) {
 	return v.FieldByName(f.Name), newTag(f.Tag.Get("gcfg"))
 }
 
-type setter func(destp interface{}, val string, t tag) error
+type setter func(destp interface{}, blank bool, val string, t tag) error
 
 var errUnsupportedType = fmt.Errorf("unsupported type")
+var errBlankUnsupported = fmt.Errorf("blank value not supported for type")
 
 var setters = []setter{
 	typeSetter, textUnmarshalerSetter, kindSetter, scanSetter,
 }
 
-func textUnmarshalerSetter(d interface{}, val string, t tag) error {
+func textUnmarshalerSetter(d interface{}, blank bool, val string, t tag) error {
 	dtu, ok := d.(textUnmarshaler)
 	if !ok {
 		return errUnsupportedType
 	}
+	if blank {
+		return errBlankUnsupported
+	}
 	return dtu.UnmarshalText([]byte(val))
 }
 
-func boolSetter(d interface{}, val string, t tag) error {
+func boolSetter(d interface{}, blank bool, val string, t tag) error {
+	if blank {
+		reflect.ValueOf(d).Elem().Set(reflect.ValueOf(true))
+		return nil
+	}
 	b, err := types.ParseBool(val)
 	if err == nil {
 		reflect.ValueOf(d).Elem().Set(reflect.ValueOf(b))
@@ -118,7 +121,10 @@ func intModeDefault(t reflect.Type) types.IntMode {
 	return m
 }
 
-func intSetter(d interface{}, val string, t tag) error {
+func intSetter(d interface{}, blank bool, val string, t tag) error {
+	if blank {
+		return errBlankUnsupported
+	}
 	mode := intMode(t.intMode)
 	if mode == 0 {
 		mode = intModeDefault(reflect.TypeOf(d).Elem())
@@ -126,7 +132,10 @@ func intSetter(d interface{}, val string, t tag) error {
 	return types.ParseInt(d, val, mode)
 }
 
-func stringSetter(d interface{}, val string, t tag) error {
+func stringSetter(d interface{}, blank bool, val string, t tag) error {
+	if blank {
+		return errBlankUnsupported
+	}
 	dsp, ok := d.(*string)
 	if !ok {
 		return errUnsupportedType
@@ -155,29 +164,32 @@ var typeSetters = map[reflect.Type]setter{
 	reflect.TypeOf(big.Int{}): intSetter,
 }
 
-func typeSetter(d interface{}, val string, tt tag) error {
+func typeSetter(d interface{}, blank bool, val string, tt tag) error {
 	t := reflect.ValueOf(d).Type().Elem()
 	setter, ok := typeSetters[t]
 	if !ok {
 		return errUnsupportedType
 	}
-	return setter(d, val, tt)
+	return setter(d, blank, val, tt)
 }
 
-func kindSetter(d interface{}, val string, tt tag) error {
+func kindSetter(d interface{}, blank bool, val string, tt tag) error {
 	k := reflect.ValueOf(d).Type().Elem().Kind()
 	setter, ok := kindSetters[k]
 	if !ok {
 		return errUnsupportedType
 	}
-	return setter(d, val, tt)
+	return setter(d, blank, val, tt)
 }
 
-func scanSetter(d interface{}, val string, tt tag) error {
+func scanSetter(d interface{}, blank bool, val string, tt tag) error {
+	if blank {
+		return errBlankUnsupported
+	}
 	return types.ScanFully(d, val, 'v')
 }
 
-func set(cfg interface{}, sect, sub, name, value string) error {
+func set(cfg interface{}, sect, sub, name string, blank bool, value string) error {
 	vPCfg := reflect.ValueOf(cfg)
 	if vPCfg.Kind() != reflect.Ptr || vPCfg.Elem().Kind() != reflect.Struct {
 		panic(fmt.Errorf("config must be a pointer to a struct"))
@@ -242,7 +254,7 @@ func set(cfg interface{}, sect, sub, name, value string) error {
 	vAddrI := vAddr.Interface()
 	err, ok := error(nil), false
 	for _, s := range setters {
-		err = s(vAddrI, value, t)
+		err = s(vAddrI, blank, value, t)
 		if err == nil {
 			ok = true
 			break
