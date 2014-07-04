@@ -189,6 +189,44 @@ func scanSetter(d interface{}, blank bool, val string, tt tag) error {
 	return types.ScanFully(d, val, 'v')
 }
 
+func idxFieldFold(v reflect.Value, name string) (reflect.Value, tag) {
+	fIdxer := v.FieldByName("Idxer")
+	if !fIdxer.IsValid() || fIdxer.Type() != reflect.TypeOf(Idxer{}) {
+		return fieldFold(v, name)
+	}
+
+	idxer := fIdxer.Addr().Interface().(*Idxer)
+	var f reflect.Value
+	for i := 0; i < v.NumField(); i++ {
+		if v.Type().Field(i).Name == "Idxer" {
+			continue
+		}
+		if (f != reflect.Value{}) {
+			panic("uservar struct should only have one field besides Idxer")
+		}
+		f = v.Field(i)
+	}
+	if f.Type().Kind() != reflect.Map ||
+		f.Type().Key() != reflect.TypeOf(Idx{}) ||
+		f.Type().Elem().Kind() != reflect.Ptr {
+		panic("uservar struct should have a single map[gcfg.Idx]*... field")
+	}
+	if f.IsNil() {
+		f.Set(reflect.MakeMap(f.Type()))
+	}
+	idx := idxer.Idx(name)
+	if (idx == Idx{}) {
+		idxer.add(name)
+		idx = idxer.Idx(name)
+	}
+	vv := f.MapIndex(reflect.ValueOf(idx))
+	if !vv.IsValid() {
+		f.SetMapIndex(reflect.ValueOf(idx), reflect.New(f.Type().Elem().Elem()))
+		vv = f.MapIndex(reflect.ValueOf(idx))
+	}
+	return vv.Elem(), tag{}
+}
+
 func set(cfg interface{}, sect, sub, name string, blank bool, value string) error {
 	vPCfg := reflect.ValueOf(cfg)
 	if vPCfg.Kind() != reflect.Ptr || vPCfg.Elem().Kind() != reflect.Struct {
@@ -225,7 +263,7 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 		return fmt.Errorf("invalid subsection: "+
 			"section %q subsection %q", sect, sub)
 	}
-	vVar, t := fieldFold(vSect, name)
+	vVar, t := idxFieldFold(vSect, name)
 	if !vVar.IsValid() {
 		return fmt.Errorf("invalid variable: "+
 			"section %q subsection %q variable %q", sect, sub, name)
