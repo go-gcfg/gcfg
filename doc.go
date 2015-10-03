@@ -49,6 +49,9 @@
 // without a subsection name, its values are stored with the empty string used
 // as the key.
 //
+// If there is a section that does not correspond to a struct field, the
+// section is skipped.
+//
 // The functions in this package panic if config is not a pointer to a struct,
 // or when a field is not of a suitable type (either a struct or a map with
 // string keys and pointer-to-struct values).
