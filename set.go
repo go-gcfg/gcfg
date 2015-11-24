@@ -240,7 +240,7 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 	// multi-value if unnamed slice type
 	isMulti := vVar.Type().Name() == "" && vVar.Kind() == reflect.Slice
 	if isMulti && blank {
-		vVar.Set(reflect.Zero(vVar.Type()))
+		vVar.Set(reflect.MakeSlice(vVar.Type(), 0, 0))
 		return nil
 	}
 	if isMulti {
