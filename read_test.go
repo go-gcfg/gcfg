@@ -192,16 +192,16 @@ var readtests = []struct {
 	{"[m3]\npmulti=value", &cMulti{M3: cMultiS3{PMulti: newStringSlice("value")}}, true},
 	{"[m3]\npmulti=value1\npmulti=value2", &cMulti{M3: cMultiS3{PMulti: newStringSlice("value1", "value2")}}, true},
 	// section name not matched
-	{"\n[nonexistent]\nname=value", &cBasic{}, false},
+	{"\n[nonexistent]\nname=value", &cBasic{}, true},
 	// subsection name not matched
-	{"\n[section \"nonexistent\"]\nname=value", &cBasic{}, false},
+	{"\n[section \"nonexistent\"]\nname=value", &cBasic{}, true},
 	// variable name not matched
-	{"\n[section]\nnonexistent=value", &cBasic{}, false},
+	{"\n[section]\nnonexistent=value", &cBasic{}, true},
 	// hyphen in name
 	{"[hyphen-in-section]\nhyphen-in-name=value", &cBasic{Hyphen_In_Section: cBasicS2{Hyphen_In_Name: "value"}}, true},
 	// ignore unexported fields
-	{"[unexported]\nname=value", &cBasic{}, false},
-	{"[exported]\nunexported=value", &cBasic{}, false},
+	{"[unexported]\nname=value", &cBasic{}, true},
+	{"[exported]\nunexported=value", &cBasic{}, true},
 	// 'X' prefix for non-upper/lower-case letters
 	{"[甲]\n乙=丙", &cUni{X甲: cUniS1{X乙: "丙"}}, true},
 	//{"[section]\nxname=value", &cBasic{XSection: cBasicS4{XName: "value"}}, false},
@@ -219,8 +219,8 @@ var readtests = []struct {
 	{"\n[m1]\nmulti\nmulti=value1\nmulti=value2", &cMulti{M1: cMultiS1{[]string{"value1", "value2"}}}, true},
 	// named slice type: do not treat as multi-value
 	{"\n[m2]", &cMulti{}, true},
-	{"\n[m2]\nmulti=value", &cMulti{}, false},
-	{"\n[m2]\nmulti=value1\nmulti=value2", &cMulti{}, false},
+	{"\n[m2]\nmulti=value", &cMulti{}, true},
+	{"\n[m2]\nmulti=value1\nmulti=value2", &cMulti{}, true},
 }}, {"type:string", []readtest{
 	{"[section]\nname=value", &cBasic{Section: cBasicS1{Name: "value"}}, true},
 	{"[section]\nname=", &cBasic{Section: cBasicS1{Name: ""}}, true},

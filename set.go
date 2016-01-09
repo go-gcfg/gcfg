@@ -197,7 +197,7 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 	vCfg := vPCfg.Elem()
 	vSect, _ := fieldFold(vCfg, sect)
 	if !vSect.IsValid() {
-		return fmt.Errorf("invalid section: section %q", sect)
+		return nil
 	}
 	if vSect.Kind() == reflect.Map {
 		vst := vSect.Type()
@@ -222,8 +222,7 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 		panic(fmt.Errorf("field for section must be a map or a struct: "+
 			"section %q", sect))
 	} else if sub != "" {
-		return fmt.Errorf("invalid subsection: "+
-			"section %q subsection %q", sect, sub)
+		return nil
 	}
 	// Empty name is a special value, meaning that only the
 	// section/subsection object is to be created, with no values set.
@@ -232,8 +231,7 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 	}
 	vVar, t := fieldFold(vSect, name)
 	if !vVar.IsValid() {
-		return fmt.Errorf("invalid variable: "+
-			"section %q subsection %q variable %q", sect, sub, name)
+		return nil
 	}
 	// vVal is either single-valued var, or newly allocated value within multi-valued var
 	var vVal reflect.Value
