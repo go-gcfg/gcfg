@@ -1,6 +1,8 @@
 package gcfg
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -9,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"gopkg.in/gcfg.v1/types"
+	"gopkg.in/warnings.v0"
 )
 
 type tag struct {
@@ -227,7 +230,32 @@ func idxFieldFold(v reflect.Value, name string) (reflect.Value, tag) {
 	return vv.Elem(), tag{}
 }
 
-func set(cfg interface{}, sect, sub, name string, blank bool, value string) error {
+func newValue(c *warnings.Collector, sect string, vCfg reflect.Value,
+	vType reflect.Type) (reflect.Value, error) {
+	//
+	pv := reflect.New(vType)
+	dfltName := "default-" + sect
+	dfltField, _ := fieldFold(vCfg, dfltName)
+	var err error
+	if dfltField.IsValid() {
+		b := bytes.NewBuffer(nil)
+		ge := gob.NewEncoder(b)
+		err = c.Collect(ge.EncodeValue(dfltField))
+		if err != nil {
+			return pv, err
+		}
+		gd := gob.NewDecoder(bytes.NewReader(b.Bytes()))
+		err = c.Collect(gd.DecodeValue(pv.Elem()))
+		if err != nil {
+			return pv, err
+		}
+	}
+	return pv, nil
+}
+
+func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
+	blank bool, value string, subsectPass bool) error {
+	//
 	vPCfg := reflect.ValueOf(cfg)
 	if vPCfg.Kind() != reflect.Ptr || vPCfg.Elem().Kind() != reflect.Struct {
 		panic(fmt.Errorf("config must be a pointer to a struct"))
@@ -235,9 +263,14 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 	vCfg := vPCfg.Elem()
 	vSect, _ := fieldFold(vCfg, sect)
 	if !vSect.IsValid() {
-		return fmt.Errorf("invalid section: section %q", sect)
+		err := extraData{section: sect}
+		return c.Collect(err)
 	}
-	if vSect.Kind() == reflect.Map {
+	isSubsect := vSect.Kind() == reflect.Map
+	if subsectPass != isSubsect {
+		return nil
+	}
+	if isSubsect {
 		vst := vSect.Type()
 		if vst.Key().Kind() != reflect.String ||
 			vst.Elem().Kind() != reflect.Ptr ||
@@ -252,7 +285,11 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 		pv := vSect.MapIndex(k)
 		if !pv.IsValid() {
 			vType := vSect.Type().Elem().Elem()
-			pv = reflect.New(vType)
+			var err error
+			pv, err = newValue(c, sect, vCfg, vType)
+			if err != nil {
+				return err
+			}
 			vSect.SetMapIndex(k, pv)
 		}
 		vSect = pv.Elem()
@@ -260,8 +297,8 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 		panic(fmt.Errorf("field for section must be a map or a struct: "+
 			"section %q", sect))
 	} else if sub != "" {
-		return fmt.Errorf("invalid subsection: "+
-			"section %q subsection %q", sect, sub)
+		err := extraData{section: sect, subsection: &sub}
+		return c.Collect(err)
 	}
 	// Empty name is a special value, meaning that only the
 	// section/subsection object is to be created, with no values set.
@@ -270,8 +307,13 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 	}
 	vVar, t := idxFieldFold(vSect, name)
 	if !vVar.IsValid() {
-		return fmt.Errorf("invalid variable: "+
-			"section %q subsection %q variable %q", sect, sub, name)
+		var err error
+		if isSubsect {
+			err = extraData{section: sect, subsection: &sub, variable: &name}
+		} else {
+			err = extraData{section: sect, variable: &name}
+		}
+		return c.Collect(err)
 	}
 	// vVal is either single-valued var, or newly allocated value within multi-valued var
 	var vVal reflect.Value
