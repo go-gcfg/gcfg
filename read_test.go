@@ -336,3 +336,24 @@ func TestReadFileIntoUnicode(t *testing.T) {
 		t.Errorf("got %q, wanted %q", res.X甲.X乙, "丙")
 	}
 }
+
+func TestReadStringIntoSubsectDefaults(t *testing.T) {
+	type subsect struct {
+		Color       string
+		Orientation string
+	}
+	res := &struct {
+		Default_Profile subsect
+		Profile         map[string]*subsect
+	}{Default_Profile: subsect{Color: "green"}}
+	cfg := `
+	[profile "one"]
+	orientation = left`
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if res.Profile["one"].Color != "green" {
+		t.Errorf("got %q; want %q", res.Profile["one"].Color, "green")
+	}
+}

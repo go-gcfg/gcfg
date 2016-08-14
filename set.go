@@ -1,6 +1,8 @@
 package gcfg
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -189,6 +191,27 @@ func scanSetter(d interface{}, blank bool, val string, tt tag) error {
 	return types.ScanFully(d, val, 'v')
 }
 
+func newValue(sect string, vCfg reflect.Value, vType reflect.Type) (reflect.Value, error) {
+	pv := reflect.New(vType)
+	dfltName := "default-" + sect
+	dfltField, _ := fieldFold(vCfg, dfltName)
+	var err error
+	if dfltField.IsValid() {
+		b := bytes.NewBuffer(nil)
+		ge := gob.NewEncoder(b)
+		err = ge.EncodeValue(dfltField)
+		if err != nil {
+			return pv, err
+		}
+		gd := gob.NewDecoder(bytes.NewReader(b.Bytes()))
+		err = gd.DecodeValue(pv.Elem())
+		if err != nil {
+			return pv, err
+		}
+	}
+	return pv, nil
+}
+
 func set(cfg interface{}, sect, sub, name string, blank bool, value string,
 	subsectPass bool) error {
 	//
@@ -220,7 +243,11 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string,
 		pv := vSect.MapIndex(k)
 		if !pv.IsValid() {
 			vType := vSect.Type().Elem().Elem()
-			pv = reflect.New(vType)
+			var err error
+			pv, err = newValue(sect, vCfg, vType)
+			if err != nil {
+				return err
+			}
 			vSect.SetMapIndex(k, pv)
 		}
 		vSect = pv.Elem()
