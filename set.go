@@ -189,7 +189,9 @@ func scanSetter(d interface{}, blank bool, val string, tt tag) error {
 	return types.ScanFully(d, val, 'v')
 }
 
-func set(cfg interface{}, sect, sub, name string, blank bool, value string) error {
+func set(cfg interface{}, sect, sub, name string, blank bool, value string,
+	subsectPass bool) error {
+	//
 	vPCfg := reflect.ValueOf(cfg)
 	if vPCfg.Kind() != reflect.Ptr || vPCfg.Elem().Kind() != reflect.Struct {
 		panic(fmt.Errorf("config must be a pointer to a struct"))
@@ -199,7 +201,11 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string) erro
 	if !vSect.IsValid() {
 		return fmt.Errorf("invalid section: section %q", sect)
 	}
-	if vSect.Kind() == reflect.Map {
+	isSubsect := vSect.Kind() == reflect.Map
+	if subsectPass != isSubsect {
+		return nil
+	}
+	if isSubsect {
 		vst := vSect.Type()
 		if vst.Key().Kind() != reflect.String ||
 			vst.Elem().Kind() != reflect.Ptr ||

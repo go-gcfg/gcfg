@@ -49,7 +49,9 @@ func unquote(s string) string {
 	return string(u)
 }
 
-func readInto(config interface{}, fset *token.FileSet, file *token.File, src []byte) error {
+func readIntoPass(config interface{}, fset *token.FileSet, file *token.File,
+	src []byte, subsectPass bool) error {
+	//
 	var s scanner.Scanner
 	var errs scanner.ErrorList
 	s.Init(file, src, func(p token.Position, m string) { errs.Add(p, m) }, 0)
@@ -103,7 +105,7 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 			// If a section/subsection header was found, ensure a
 			// container object is created, even if there are no
 			// variables further down.
-			err := set(config, sect, sectsub, "", true, "")
+			err := set(config, sect, sectsub, "", true, "", subsectPass)
 			if err != nil {
 				return err
 			}
@@ -137,7 +139,7 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 					return errfn("expected EOL, EOF, or comment")
 				}
 			}
-			err := set(config, sect, sectsub, n, blank, v)
+			err := set(config, sect, sectsub, n, blank, v, subsectPass)
 			if err != nil {
 				return err
 			}
@@ -149,6 +151,16 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File, src []b
 		}
 	}
 	panic("never reached")
+}
+
+func readInto(config interface{}, fset *token.FileSet, file *token.File,
+	src []byte) error {
+	//
+	err := readIntoPass(config, fset, file, src, false)
+	if err != nil {
+		return err
+	}
+	return readIntoPass(config, fset, file, src, true)
 }
 
 // ReadInto reads gcfg formatted data from reader and sets the values into the
