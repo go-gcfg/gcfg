@@ -48,6 +48,9 @@
 // When using a map, and there is a section with the same section name but
 // without a subsection name, its values are stored with the empty string used
 // as the key.
+// It is possible to provide default values for subsections in the section
+// "default-<sectionname>" (or by setting values in the corresponding struct
+// field "Default_<sectionname>").
 //
 // The functions in this package panic if config is not a pointer to a struct,
 // or when a field is not of a suitable type (either a struct or a map with
