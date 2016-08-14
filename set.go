@@ -192,7 +192,47 @@ func scanSetter(d interface{}, blank bool, val string, tt tag) error {
 	return types.ScanFully(d, val, 'v')
 }
 
-func newValue(sect string, vCfg reflect.Value, vType reflect.Type) (reflect.Value, error) {
+func idxFieldFold(v reflect.Value, name string) (reflect.Value, tag) {
+	fIdxer := v.FieldByName("Idxer")
+	if !fIdxer.IsValid() || fIdxer.Type() != reflect.TypeOf(Idxer{}) {
+		return fieldFold(v, name)
+	}
+
+	idxer := fIdxer.Addr().Interface().(*Idxer)
+	var f reflect.Value
+	for i := 0; i < v.NumField(); i++ {
+		if v.Type().Field(i).Name == "Idxer" {
+			continue
+		}
+		if (f != reflect.Value{}) {
+			panic("uservar struct should only have one field besides Idxer")
+		}
+		f = v.Field(i)
+	}
+	if f.Type().Kind() != reflect.Map ||
+		f.Type().Key() != reflect.TypeOf(Idx{}) ||
+		f.Type().Elem().Kind() != reflect.Ptr {
+		panic("uservar struct should have a single map[gcfg.Idx]*... field")
+	}
+	if f.IsNil() {
+		f.Set(reflect.MakeMap(f.Type()))
+	}
+	idx := idxer.Idx(name)
+	if (idx == Idx{}) {
+		idxer.add(name)
+		idx = idxer.Idx(name)
+	}
+	vv := f.MapIndex(reflect.ValueOf(idx))
+	if !vv.IsValid() {
+		f.SetMapIndex(reflect.ValueOf(idx), reflect.New(f.Type().Elem().Elem()))
+		vv = f.MapIndex(reflect.ValueOf(idx))
+	}
+	return vv.Elem(), tag{}
+}
+
+func newValue(c *warnings.Collector, sect string, vCfg reflect.Value,
+	vType reflect.Type) (reflect.Value, error) {
+	//
 	pv := reflect.New(vType)
 	dfltName := "default-" + sect
 	dfltField, _ := fieldFold(vCfg, dfltName)
@@ -200,12 +240,12 @@ func newValue(sect string, vCfg reflect.Value, vType reflect.Type) (reflect.Valu
 	if dfltField.IsValid() {
 		b := bytes.NewBuffer(nil)
 		ge := gob.NewEncoder(b)
-		err = ge.EncodeValue(dfltField)
+		err = c.Collect(ge.EncodeValue(dfltField))
 		if err != nil {
 			return pv, err
 		}
 		gd := gob.NewDecoder(bytes.NewReader(b.Bytes()))
-		err = gd.DecodeValue(pv.Elem())
+		err = c.Collect(gd.DecodeValue(pv.Elem()))
 		if err != nil {
 			return pv, err
 		}
@@ -246,7 +286,7 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 		if !pv.IsValid() {
 			vType := vSect.Type().Elem().Elem()
 			var err error
-			pv, err = newValue(sect, vCfg, vType)
+			pv, err = newValue(c, sect, vCfg, vType)
 			if err != nil {
 				return err
 			}
@@ -265,7 +305,7 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 	if name == "" {
 		return nil
 	}
-	vVar, t := fieldFold(vSect, name)
+	vVar, t := idxFieldFold(vSect, name)
 	if !vVar.IsValid() {
 		var err error
 		if isSubsect {

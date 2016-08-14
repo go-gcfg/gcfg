@@ -95,6 +95,7 @@ type cNumS2 struct {
 	MultiBig []*big.Int
 }
 type cNumS3 struct{ FileMode os.FileMode }
+
 type readtest struct {
 	gcfg string
 	exp  interface{}
@@ -334,6 +335,62 @@ func TestReadFileIntoUnicode(t *testing.T) {
 	}
 	if "丙" != res.X甲.X乙 {
 		t.Errorf("got %q, wanted %q", res.X甲.X乙, "丙")
+	}
+}
+
+type cUserVar struct {
+	UserVar  cUserVarS
+	UserVarM cUserVarMS
+}
+type cUserVarS struct {
+	Idxer
+	V map[Idx]*string
+}
+type cUserVarMS struct {
+	Idxer
+	V map[Idx]*[]string
+}
+
+func TestReadStringIntoUserVar(t *testing.T) {
+	res := &cUserVar{}
+	cfg := "[uservar]\nname=value"
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Fatalf("ReadStringInto(%v, %q)=%v; want ok", &cUserVar{}, cfg, err)
+	}
+	s := &res.UserVar
+	ns := s.Names()
+	if len(ns) != 1 {
+		t.Fatalf("Idxer.Names()=%d; want length 1", ns)
+	}
+	if n, n0 := s.Idx("name"), s.Idx(ns[0]); n != n0 {
+		t.Fatalf("Idxer.Idx(Idxer.Names()[0])=%q; "+
+			"want same as Idxer.Idx(\"name\")=%q", n0, n)
+	}
+	if v := s.V[res.UserVar.Idx("name")]; *v != "value" {
+		t.Fatalf("V[Idxer.Idx(\"name\")]=%q; want \"value\"", v)
+	}
+}
+
+func TestReadStringIntoUserVarMulti(t *testing.T) {
+	res := &cUserVar{}
+	cfg := "[uservarm]\nname=value1\nname=value2"
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Fatalf("ReadStringInto(%v, %q)=%v; want ok", &cUserVar{}, cfg, err)
+	}
+	s := &res.UserVarM
+	ns := s.Names()
+	if len(ns) != 1 {
+		t.Fatalf("Idxer.Names()=%d; want length 1", ns)
+	}
+	if n, n0 := s.Idx("name"), s.Idx(ns[0]); n != n0 {
+		t.Fatalf("Idxer.Idx(Idxer.Names()[0])=%q; "+
+			"want same as Idxer.Idx(\"name\")=%q", n0, n)
+	}
+	if v := s.V[s.Idx("name")]; !reflect.DeepEqual(
+		*v, []string{"value1", "value2"}) {
+		t.Fatalf("V[Idxer.Idx(\"name\")]=%q; want \"value\"", v)
 	}
 }
 
