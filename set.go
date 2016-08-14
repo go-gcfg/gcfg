@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"gopkg.in/gcfg.v1/types"
+	"gopkg.in/warnings.v0"
 )
 
 type tag struct {
@@ -212,8 +213,8 @@ func newValue(sect string, vCfg reflect.Value, vType reflect.Type) (reflect.Valu
 	return pv, nil
 }
 
-func set(cfg interface{}, sect, sub, name string, blank bool, value string,
-	subsectPass bool) error {
+func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
+	blank bool, value string, subsectPass bool) error {
 	//
 	vPCfg := reflect.ValueOf(cfg)
 	if vPCfg.Kind() != reflect.Ptr || vPCfg.Elem().Kind() != reflect.Struct {
@@ -222,7 +223,8 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string,
 	vCfg := vPCfg.Elem()
 	vSect, _ := fieldFold(vCfg, sect)
 	if !vSect.IsValid() {
-		return extraData{section: sect}
+		err := extraData{section: sect}
+		return c.Collect(err)
 	}
 	isSubsect := vSect.Kind() == reflect.Map
 	if subsectPass != isSubsect {
@@ -255,7 +257,8 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string,
 		panic(fmt.Errorf("field for section must be a map or a struct: "+
 			"section %q", sect))
 	} else if sub != "" {
-		return extraData{section: sect, subsection: &sub}
+		err := extraData{section: sect, subsection: &sub}
+		return c.Collect(err)
 	}
 	// Empty name is a special value, meaning that only the
 	// section/subsection object is to be created, with no values set.
@@ -264,11 +267,13 @@ func set(cfg interface{}, sect, sub, name string, blank bool, value string,
 	}
 	vVar, t := fieldFold(vSect, name)
 	if !vVar.IsValid() {
+		var err error
 		if isSubsect {
-			return extraData{section: sect, subsection: &sub, variable: &name}
+			err = extraData{section: sect, subsection: &sub, variable: &name}
 		} else {
-			return extraData{section: sect, variable: &name}
+			err = extraData{section: sect, variable: &name}
 		}
+		return c.Collect(err)
 	}
 	// vVal is either single-valued var, or newly allocated value within multi-valued var
 	var vVal reflect.Value

@@ -1,5 +1,18 @@
 package gcfg
 
+import (
+	"gopkg.in/warnings.v0"
+)
+
+func FatalOnly(err error) error {
+	return warnings.FatalOnly(err)
+}
+
+func isFatal(err error) bool {
+	_, ok := err.(extraData)
+	return !ok
+}
+
 type extraData struct {
 	section    string
 	subsection *string
