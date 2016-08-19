@@ -192,7 +192,9 @@ func scanSetter(d interface{}, blank bool, val string, tt tag) error {
 	return types.ScanFully(d, val, 'v')
 }
 
-func newValue(sect string, vCfg reflect.Value, vType reflect.Type) (reflect.Value, error) {
+func newValue(c *warnings.Collector, sect string, vCfg reflect.Value,
+	vType reflect.Type) (reflect.Value, error) {
+	//
 	pv := reflect.New(vType)
 	dfltName := "default-" + sect
 	dfltField, _ := fieldFold(vCfg, dfltName)
@@ -200,13 +202,11 @@ func newValue(sect string, vCfg reflect.Value, vType reflect.Type) (reflect.Valu
 	if dfltField.IsValid() {
 		b := bytes.NewBuffer(nil)
 		ge := gob.NewEncoder(b)
-		err = ge.EncodeValue(dfltField)
-		if err != nil {
+		if err = c.Collect(ge.EncodeValue(dfltField)); err != nil {
 			return pv, err
 		}
 		gd := gob.NewDecoder(bytes.NewReader(b.Bytes()))
-		err = gd.DecodeValue(pv.Elem())
-		if err != nil {
+		if err = c.Collect(gd.DecodeValue(pv.Elem())); err != nil {
 			return pv, err
 		}
 	}
@@ -246,8 +246,7 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 		if !pv.IsValid() {
 			vType := vSect.Type().Elem().Elem()
 			var err error
-			pv, err = newValue(sect, vCfg, vType)
-			if err != nil {
+			if pv, err = newValue(c, sect, vCfg, vType); err != nil {
 				return err
 			}
 			vSect.SetMapIndex(k, pv)
