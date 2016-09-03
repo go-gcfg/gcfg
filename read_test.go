@@ -376,3 +376,23 @@ func TestReadStringIntoExtraData(t *testing.T) {
 		t.Errorf("res.Section.Name=%q; want %q", res.Section.Name, "value")
 	}
 }
+
+func TestStringStringMapSection(t *testing.T) {
+	res := &struct {
+		Section map[string]string
+	}{}
+	cfg := `
+	[section]
+	key = value
+	key2 = value2`
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Error(err)
+	}
+	if res.Section["key"] != "value" {
+		t.Errorf("res.Section.Name=%q; want %q", res.Section["key"], "value")
+	}
+	if res.Section["key2"] != "value2" {
+		t.Errorf("res.Section.Name=%q; want %q", res.Section["key2"], "value2")
+	}
+}

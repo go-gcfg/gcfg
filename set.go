@@ -232,11 +232,24 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 	}
 	if isSubsect {
 		vst := vSect.Type()
+		if vst.Key().Kind() == reflect.String && vst.Elem().Kind() == reflect.String {
+			if vSect.IsNil() {
+				vSect.Set(reflect.MakeMap(vst))
+			}
+			if value != "" {
+				if sub != "" {
+					vSect.SetMapIndex(reflect.ValueOf(sub+" "+name), reflect.ValueOf(value))
+				} else {
+					vSect.SetMapIndex(reflect.ValueOf(name), reflect.ValueOf(value))
+				}
+			}
+			return nil
+		}
 		if vst.Key().Kind() != reflect.String ||
 			vst.Elem().Kind() != reflect.Ptr ||
 			vst.Elem().Elem().Kind() != reflect.Struct {
 			panic(fmt.Errorf("map field for section must have string keys and "+
-				" pointer-to-struct values: section %q", sect))
+				" pointer-to-struct or string values: section %q", sect))
 		}
 		if vSect.IsNil() {
 			vSect.Set(reflect.MakeMap(vst))
