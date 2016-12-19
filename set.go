@@ -286,7 +286,7 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 		vVar = vVar.Elem()
 	}
 	if isMulti && blank {
-		vVar.Set(reflect.Zero(vVar.Type()))
+		vVar.Set(reflect.MakeSlice(vVar.Type(), 0, 0))
 		return nil
 	}
 	if isMulti {
