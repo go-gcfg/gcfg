@@ -14,7 +14,7 @@ type Config1 struct {
 	}
 }
 
-var testsIssue1 = []struct {
+var testsGoogleCodeIssue1 = []struct {
 	cfg      string
 	typename string
 }{
@@ -29,8 +29,8 @@ var testsIssue1 = []struct {
 // Value parse error should:
 //  - include plain type name
 //  - not include reflect internals
-func TestIssue1(t *testing.T) {
-	for i, tt := range testsIssue1 {
+func TestGoogleCodeIssue1(t *testing.T) {
+	for i, tt := range testsGoogleCodeIssue1 {
 		var c Config1
 		err := ReadStringInto(&c, tt.cfg)
 		switch {
@@ -48,15 +48,15 @@ func TestIssue1(t *testing.T) {
 	}
 }
 
-type confIssue2 struct{ Main struct{ Foo string } }
+type confGoogleCodeIssue2 struct{ Main struct{ Foo string } }
 
-var testsIssue2 = []readtest{
-	{"[main]\n;\nfoo = bar\n", &confIssue2{struct{ Foo string }{"bar"}}, true},
-	{"[main]\r\n;\r\nfoo = bar\r\n", &confIssue2{struct{ Foo string }{"bar"}}, true},
+var testsGoogleCodeIssue2 = []readtest{
+	{"[main]\n;\nfoo = bar\n", &confGoogleCodeIssue2{struct{ Foo string }{"bar"}}, true},
+	{"[main]\r\n;\r\nfoo = bar\r\n", &confGoogleCodeIssue2{struct{ Foo string }{"bar"}}, true},
 }
 
-func TestIssue2(t *testing.T) {
-	for i, tt := range testsIssue2 {
+func TestGoogleCodeIssue2(t *testing.T) {
+	for i, tt := range testsGoogleCodeIssue2 {
 		id := fmt.Sprintf("issue2:%d", i)
 		testRead(t, id, tt)
 	}
