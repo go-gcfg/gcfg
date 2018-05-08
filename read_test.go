@@ -1,6 +1,7 @@
 package gcfg
 
 import (
+	"encoding"
 	"fmt"
 	"math/big"
 	"os"
@@ -49,7 +50,7 @@ func (u *unmarshalable) UnmarshalText(text []byte) error {
 	return nil
 }
 
-var _ textUnmarshaler = new(unmarshalable)
+var _ encoding.TextUnmarshaler = new(unmarshalable)
 
 type cUni struct {
 	X甲       cUniS1
