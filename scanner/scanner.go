@@ -127,7 +127,22 @@ func (s *Scanner) Init(file *token.File, src []byte, err ErrorHandler, mode Mode
 	s.ErrorCount = 0
 	s.nextVal = false
 
+	s.skipUTF8Bom()
+
 	s.next()
+}
+
+func (s *Scanner) skipUTF8Bom() {
+	if s.rdOffset+3 >= len(s.src)  {
+		return
+	}
+
+	bom := s.src[s.rdOffset:s.rdOffset+3]
+	if bom[0] != 0xef || bom[1] != 0xbb || bom[2] != 0xbf {
+		return
+	}
+
+	s.rdOffset += 3
 }
 
 func (s *Scanner) error(offs int, msg string) {
