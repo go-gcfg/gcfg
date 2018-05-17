@@ -338,6 +338,17 @@ func TestReadFileIntoUnicode(t *testing.T) {
 	}
 }
 
+func TestReadFileIntoNotepad(t *testing.T) {
+	res := &struct{ X甲 struct{ X乙 string } }{}
+	err := ReadFileInto(res, "testdata/notepad.ini")
+	if err != nil {
+		t.Error(err)
+	}
+	if "丁" != res.X甲.X乙 {
+		t.Errorf("got %q, wanted %q", res.X甲.X乙, "丁")
+	}
+}
+
 func TestReadStringIntoSubsectDefaults(t *testing.T) {
 	type subsect struct {
 		Color       string
