@@ -1,13 +1,13 @@
 package gcfg
 
 import (
+	"bytes"
 	"encoding"
 	"fmt"
 	"math/big"
 	"os"
 	"reflect"
 	"testing"
-	"bytes"
 )
 
 const (
@@ -417,21 +417,21 @@ func TestPanics(t *testing.T) {
 	}
 }
 
-var utf8bomtests = []struct{
-	id string
+var utf8bomtests = []struct {
+	id  string
 	in  []byte
 	out []byte
 }{
-	{"0 bytes input",[]byte{}, []byte{}},
-	{"3 bytes input (BOM only)",[]byte{0xEF,0xBB,0xBF}, []byte{}},
-	{"3 bytes input (comment only, without BOM)",[]byte(";c\n"), []byte(";c\n")},
-	{"normal input with BOM",[]byte("\xEF\xBB\xBF[section]\nname=value"), []byte("[section]\nname=value")},
-	{"normal input without BOM",[]byte("[section]\nname=value"), []byte("[section]\nname=value")},
+	{"0 bytes input", []byte{}, []byte{}},
+	{"3 bytes input (BOM only)", []byte("\ufeff"), []byte{}},
+	{"3 bytes input (comment only, without BOM)", []byte(";c\n"), []byte(";c\n")},
+	{"normal input with BOM", []byte("\ufeff[section]\nname=value"), []byte("[section]\nname=value")},
+	{"normal input without BOM", []byte("[section]\nname=value"), []byte("[section]\nname=value")},
 }
 
-func testUtf8Bom(t *testing.T, id string, in, out []byte){
+func testUtf8Bom(t *testing.T, id string, in, out []byte) {
 	got := skipLeadingUtf8Bom([]byte(in))
-	if !bytes.Equal(got,out) {
+	if !bytes.Equal(got, out) {
 		t.Errorf("%s.", id)
 	}
 }

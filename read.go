@@ -1,6 +1,7 @@
 package gcfg
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 )
 
 var unescape = map[rune]rune{'\\': '\\', '"': '"', 'n': '\n', 't': '\t'}
+var utf8Bom = []byte("\ufeff")
 
 // no error: invalid literals should be caught by scanner
 func unquote(s string) string {
@@ -243,14 +245,13 @@ func ReadFileInto(config interface{}, filename string) error {
 	return readInto(config, fset, file, src)
 }
 
-func skipLeadingUtf8Bom(src []byte) []byte{
-	if len(src) >= 3 {
-		bom := src[:3]
-		if bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF {
-			return src[3:]
+func skipLeadingUtf8Bom(src []byte) []byte {
+	lengthUtf8Bom := len(utf8Bom)
+
+	if len(src) >= lengthUtf8Bom {
+		if bytes.Equal(src[:lengthUtf8Bom], utf8Bom) {
+			return src[lengthUtf8Bom:]
 		}
 	}
 	return src
 }
-
-
