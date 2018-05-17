@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"bytes"
 )
 
 const (
@@ -413,5 +414,30 @@ func testPanic(t *testing.T, id string, config interface{}, gcfg string) {
 func TestPanics(t *testing.T) {
 	for _, tt := range panictests {
 		testPanic(t, tt.id, tt.config, tt.gcfg)
+	}
+}
+
+var utf8bomtests = []struct{
+	id string
+	in  []byte
+	out []byte
+}{
+	{"0 bytes input",[]byte{}, []byte{}},
+	{"3 bytes input (BOM only)",[]byte{0xEF,0xBB,0xBF}, []byte{}},
+	{"3 bytes input (comment only, without BOM)",[]byte(";c\n"), []byte(";c\n")},
+	{"normal input with BOM",[]byte("\xEF\xBB\xBF[section]\nname=value"), []byte("[section]\nname=value")},
+	{"normal input without BOM",[]byte("[section]\nname=value"), []byte("[section]\nname=value")},
+}
+
+func testUtf8Bom(t *testing.T, id string, in, out []byte){
+	got := skipLeadingUtf8Bom([]byte(in))
+	if !bytes.Equal(got,out) {
+		t.Errorf("%s.", id)
+	}
+}
+
+func TestUtf8Boms(t *testing.T) {
+	for _, tt := range utf8bomtests {
+		testUtf8Bom(t, tt.id, tt.in, tt.out)
 	}
 }

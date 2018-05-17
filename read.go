@@ -235,15 +235,22 @@ func ReadFileInto(config interface{}, filename string) error {
 		return err
 	}
 
-	//Skips a single leading UTF8 BOM sequence if it exists.
-	if len(src) > 3 {
-		bom := src[:3]
-		if bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF {
-			src = src[3:]
-		}
-	}
+	// Skips a single leading UTF8 BOM sequence if it exists.
+	src = skipLeadingUtf8Bom(src)
 
 	fset := token.NewFileSet()
 	file := fset.AddFile(filename, fset.Base(), len(src))
 	return readInto(config, fset, file, src)
 }
+
+func skipLeadingUtf8Bom(src []byte) []byte{
+	if len(src) >= 3 {
+		bom := src[:3]
+		if bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF {
+			return src[3:]
+		}
+	}
+	return src
+}
+
+
