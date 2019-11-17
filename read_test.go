@@ -391,6 +391,144 @@ func TestReadStringIntoExtraData(t *testing.T) {
 	}
 }
 
+func TestOptionalPointerSection(t *testing.T) {
+	res := &struct {
+		Section *struct {
+			Name string
+		}
+		NonOptional struct {
+			Name string
+		}
+	}{}
+	cfg := `
+        [NonOptional]`
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Error(err)
+	}
+	if res.Section != nil {
+		t.Errorf("unexpection section Section ")
+	}
+}
+
+func TestPointerSection(t *testing.T) {
+	res := &struct {
+		Section *struct {
+			Name string
+		}
+	}{}
+	cfg := `
+	[section]
+	name = value`
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Error(err)
+	}
+	if res.Section == nil {
+		t.Errorf("section Section not read")
+	}
+	if res.Section.Name != "value" {
+		t.Errorf("res.Section.Name=%q; want %q", res.Section.Name, "value")
+	}
+}
+
+func TestPointerSubSection(t *testing.T) {
+	res := &struct {
+		Section map[string]*struct {
+			Name string
+		}
+	}{}
+	cfg := `
+        [Section "test"]
+          name=value`
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(res.Section) != 1 {
+		t.Errorf("len(res.Section)=%d; want %d", len(res.Section), 1)
+	}
+	if res.Section["test"] == nil {
+		t.Errorf("res.Section[\"test\"] is nil")
+	}
+	if res.Section["test"].Name != "value" {
+		t.Errorf("res.Section[\"test\"].Name=%q; want %q", res.Section["test"].Name, "value")
+	}
+}
+
+func TestNonPointerSubSection(t *testing.T) {
+	res := &struct {
+		Section map[string]struct {
+			Name string
+		}
+	}{}
+	cfg := `
+        [Section "test"]
+          name=value`
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(res.Section) != 1 {
+		t.Errorf("len(res.Section)=%d; want %d", len(res.Section), 1)
+	}
+	if _, ok := res.Section["test"]; !ok {
+		t.Errorf("res.Section[\"test\"] is not set")
+	}
+	if res.Section["test"].Name != "value" {
+		t.Errorf("res.Section[\"test\"].Name=%q; want %q", res.Section["test"].Name, "value")
+	}
+}
+
+func TestReadKeyValueMap(t *testing.T) {
+	res := &struct {
+		Section map[string]string
+	}{}
+	cfg := `
+	[section]
+	name = value
+	name2 = value2`
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Error(err)
+	}
+	if res.Section["name"] != "value" {
+		t.Errorf("res.Section[\"name\"]=%q; want %q", res.Section["name"], "value")
+	}
+	if res.Section["name2"] != "value2" {
+		t.Errorf("res.Section[\"name2\"]=%q; want %q", res.Section["name2"], "value2")
+	}
+	if len(res.Section) != 2 {
+		t.Errorf("len(res.Section)=%d; want %d", len(res.Section), 2)
+	}
+}
+
+func TestReadKeyValueMapAsSubSection(t *testing.T) {
+	res := &struct {
+		Section map[string]map[string]string
+	}{}
+	cfg := `
+	[section "test"]
+	name = value
+	name2 = value2`
+	err := ReadStringInto(res, cfg)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(res.Section) != 1 {
+		t.Errorf("len(res.Section)=%d; want %d", len(res.Section), 1)
+	}
+	if res.Section["test"]["name"] != "value" {
+		t.Errorf("res.Section[\"test\"][\"name\"]=%q; want %q", res.Section["test"]["name"], "value")
+	}
+	if res.Section["test"]["name2"] != "value2" {
+		t.Errorf("res.Section[\"test\"][\"name2\"]=%q; want %q", res.Section["test"]["name2"], "value2")
+	}
+	if len(res.Section["test"]) != 2 {
+		t.Errorf("len(res.Section[\"test\"])=%d; want %d", len(res.Section), 2)
+	}
+}
+
 var panictests = []struct {
 	id     string
 	config interface{}
@@ -398,7 +536,7 @@ var panictests = []struct {
 }{
 	{"top", struct{}{}, "[section]\nname=value"},
 	{"section", &struct{ Section string }{}, "[section]\nname=value"},
-	{"subsection", &struct{ Section map[string]string }{}, "[section \"subsection\"]\nname=value"},
+	{"subsection", &struct{ Section map[string]**struct{} }{}, "[section \"subsection\"]\nname=value"},
 }
 
 func testPanic(t *testing.T, id string, config interface{}, gcfg string) {

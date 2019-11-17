@@ -60,19 +60,51 @@ variable-name=value # comment`
 
 func ExampleReadStringInto_tags() {
 	cfgStr := `; Comment line
-[section]
-var-name=value # comment`
+[tags]
+tag1=value1 # a tag
+tag2=value2 # a second tag`
 	cfg := struct {
-		Section struct {
-			FieldName string `gcfg:"var-name"`
+		Tags map[string]string
+	}{}
+	err := gcfg.ReadStringInto(&cfg, cfgStr)
+	if err != nil {
+		log.Fatalf("Failed to parse gcfg data: %s", err)
+	}
+	for k, v := range cfg.Tags {
+		fmt.Printf("%s = %s\n", k, v)
+	}
+	// Output: tag1 = value1
+	// tag2 = value2
+}
+
+func ExampleReadStringInto_optional_section() {
+	cfgStr := `; Comment line
+        [Section]
+          Name=value`
+	cfg := struct {
+		Optional *struct {
+			Name string
+		}
+		Section *struct {
+			Name string
 		}
 	}{}
 	err := gcfg.ReadStringInto(&cfg, cfgStr)
 	if err != nil {
 		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
-	fmt.Println(cfg.Section.FieldName)
-	// Output: value
+	if cfg.Optional == nil {
+		fmt.Println("optional not given")
+	} else {
+		fmt.Printf("Optional.Name=%s\n", cfg.Optional.Name)
+	}
+	if cfg.Section == nil {
+		fmt.Println("section not given")
+	} else {
+		fmt.Printf("Section.Name = %s\n", cfg.Section.Name)
+	}
+	// Output: optional not given
+	// Section.Name = value
 }
 
 func ExampleReadStringInto_subsections() {
