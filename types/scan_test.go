@@ -13,7 +13,7 @@ func TestScanFully(t *testing.T) {
 		ok   bool
 	}{
 		{"a", 'v', int(0), false},
-		{"0x", 'v', int(0), true},
+		{"0x", 'v', int(0), false},
 		{"0x", 'd', int(0), false},
 	} {
 		d := reflect.New(reflect.TypeOf(tt.res)).Interface()

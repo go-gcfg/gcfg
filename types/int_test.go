@@ -24,8 +24,8 @@ func TestParseInt(t *testing.T) {
 		{"a", Hex, int(0xa), true},
 		{"10", Hex, int(0x10), true},
 		{"-0xa", Hex, int(-0xa), true},
-		{"0x", Hex, int(0x0), true},  // Scanf doesn't require digit behind 0x
-		{"-0x", Hex, int(0x0), true}, // Scanf doesn't require digit behind 0x
+		{"0x", Hex, int(0x0), false},
+		{"-0x", Hex, int(0x0), false},
 		{"-a", Hex, int(-0xa), true},
 		{"-10", Hex, int(-0x10), true},
 		{"x", Hex, int(0), false},
