@@ -14,29 +14,20 @@ jobs:
     <<: *test
     docker:
       - image: circleci/golang:rc
-  go1.10:
+  go1.14:
     <<: *test
     docker:
-      - image: circleci/golang:1.10
-  go1.9:
+      - image: circleci/golang:1.14
+  go1.13:
     <<: *test
     docker:
-      - image: circleci/golang:1.9
-  go1.8:
-    <<: *test
-    docker:
-      - image: circleci/golang:1.8
-  go1.7:
-    <<: *test
-    docker:
-      - image: circleci/golang:1.7
+      - image: circleci/golang:1.13
+
 
 workflows:
   version: 2
   test:
     jobs:
       - rc
-      - go1.10
-      - go1.9
-      - go1.8
-      - go1.7
+      - go1.14
+      - go1.13
