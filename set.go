@@ -20,6 +20,10 @@ type tag struct {
 	intMode string
 }
 
+func debug(msgfmt string, args ...interface{}) {
+	//fmt.Printf(msgfmt, args...)
+}
+
 func newTag(ts string) tag {
 	t := tag{}
 	s := strings.Split(ts, ",")
@@ -41,6 +45,7 @@ func fieldFold(v reflect.Value, name string) (reflect.Value, tag) {
 	n += strings.Replace(name, "-", "_", -1)
 	f, ok := v.Type().FieldByNameFunc(func(fieldName string) bool {
 		if !v.FieldByName(fieldName).CanSet() {
+			debug("    readonly field %s\n", fieldName)
 			return false
 		}
 		f, _ := v.Type().FieldByName(fieldName)
@@ -214,6 +219,21 @@ func newValue(c *warnings.Collector, sect string, vCfg reflect.Value,
 	return pv, nil
 }
 
+func validType(t reflect.Type) bool {
+	switch t.Kind() {
+	case reflect.Struct:
+		return true
+	case reflect.Ptr:
+		return t.Elem().Kind() == reflect.Struct
+	case reflect.Map:
+		return t.Key().Kind() == reflect.String && t.Elem().Kind() == reflect.String
+	default:
+		return false
+	}
+}
+
+type x reflect.Value
+
 func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 	blank bool, value string, subsectPass bool) error {
 	//
@@ -223,107 +243,170 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 	}
 	vCfg := vPCfg.Elem()
 	vSect, _ := fieldFold(vCfg, sect)
+
 	l := loc{section: sect}
 	if !vSect.IsValid() {
 		err := extraData{loc: l}
 		return c.Collect(err)
 	}
-	isSubsect := vSect.Kind() == reflect.Map
-	if subsectPass != isSubsect {
-		return nil
-	}
+
+	vMap := vSect
+	vEntry := reflect.Value{}
+	isSubsect := vSect.Kind() == reflect.Map && vSect.Type().Elem().Kind() != reflect.String
+	//if subsectPass != isSubsect {
+	//	return nil
+	//}
+	debug("set %s / %s / %s: %s = %#v\n", sect, sub, name, vSect.Type(), vSect.Interface())
 	if isSubsect {
+		debug("-- sub section for %s\n", sect)
 		l.subsection = &sub
 		vst := vSect.Type()
-		if vst.Key().Kind() != reflect.String ||
-			vst.Elem().Kind() != reflect.Ptr ||
-			vst.Elem().Elem().Kind() != reflect.Struct {
+		if vst.Key().Kind() != reflect.String || !validType(vst.Elem()) {
 			panic(fmt.Errorf("map field for section must have string keys and "+
-				" pointer-to-struct values: section %q", sect))
+				" pointer-to-struct values or map with string key and values: section %q", sect))
 		}
 		if vSect.IsNil() {
+			debug("create map %s\n", sect)
 			vSect.Set(reflect.MakeMap(vst))
 		}
 		k := reflect.ValueOf(sub)
-		pv := vSect.MapIndex(k)
-		if !pv.IsValid() {
-			vType := vSect.Type().Elem().Elem()
+		vEntry = vSect.MapIndex(k)
+		debug("-- %s[%s]: %s\n", sect, sub, vSect.Type())
+		if !vEntry.IsValid() {
+			vType := vSect.Type().Elem()
 			var err error
-			if pv, err = newValue(c, sect, vCfg, vType); err != nil {
+			if vEntry, err = newValue(c, sect, vCfg, vType); err != nil {
 				return err
 			}
-			vSect.SetMapIndex(k, pv)
+			vEntry = vEntry.Elem()
+			switch vEntry.Kind() {
+			case reflect.Ptr:
+				if vEntry.IsNil() {
+					debug("create struct for pointer %s\n", sect)
+					vEntry.Set(reflect.New(vEntry.Type().Elem()))
+				}
+			case reflect.Map:
+				if vEntry.IsNil() {
+					debug("create map for entry %s\n", sect)
+					vEntry = reflect.MakeMap(vEntry.Type())
+				}
+			}
+			vSect.SetMapIndex(k, vEntry)
+			vSect = vEntry
+			debug("set map entry %s[%s]: %#v\n", sect, sub, vSect)
+		} else {
+			if vEntry.Kind() == reflect.Struct {
+				debug("writable copy for %s[%s]: %#v\n", sect, sub, vEntry.Interface())
+				vSect = reflect.New(vEntry.Type()).Elem()
+				vSect.Set(vEntry)
+				vEntry = vSect
+			} else {
+				vSect = vEntry
+			}
 		}
-		vSect = pv.Elem()
-	} else if vSect.Kind() != reflect.Struct {
+	} else if !validType(vSect.Type()) {
 		panic(fmt.Errorf("field for section must be a map or a struct: "+
 			"section %q", sect))
 	} else if sub != "" {
 		return c.Collect(extraData{loc: l})
+	} else {
+		debug("-- %s: struct or key/value pairs: %s\n", sect, vSect.Type())
+		switch vSect.Kind() {
+		case reflect.Ptr:
+			if vSect.IsNil() {
+				vSect.Set(reflect.New(vSect.Type().Elem()))
+			}
+		case reflect.Map:
+			if vSect.IsNil() {
+				vSect.Set(reflect.MakeMap(vSect.Type()))
+				debug("create value map\n")
+			}
+		}
 	}
+	if vSect.Kind() == reflect.Ptr {
+		vSect = vSect.Elem()
+	}
+	debug("-- value %s[%s] (%t): %s = %#v\n", sect, sub, vSect.CanSet(), vSect.Type(), vSect.Interface())
+
 	// Empty name is a special value, meaning that only the
 	// section/subsection object is to be created, with no values set.
 	if name == "" {
 		return nil
 	}
-	vVar, t := fieldFold(vSect, name)
-	l.variable = &name
-	if !vVar.IsValid() {
-		return c.Collect(extraData{loc: l})
-	}
-	// vVal is either single-valued var, or newly allocated value within multi-valued var
-	var vVal reflect.Value
-	// multi-value if unnamed slice type
-	isMulti := vVar.Type().Name() == "" && vVar.Kind() == reflect.Slice ||
-		vVar.Type().Name() == "" && vVar.Kind() == reflect.Ptr && vVar.Type().Elem().Name() == "" && vVar.Type().Elem().Kind() == reflect.Slice
-	if isMulti && vVar.Kind() == reflect.Ptr {
-		if vVar.IsNil() {
-			vVar.Set(reflect.New(vVar.Type().Elem()))
-		}
-		vVar = vVar.Elem()
-	}
-	if isMulti && blank {
-		vVar.Set(reflect.Zero(vVar.Type()))
-		return nil
-	}
-	if isMulti {
-		vVal = reflect.New(vVar.Type().Elem()).Elem()
+
+	if vSect.Kind() == reflect.Map {
+		vSect.SetMapIndex(reflect.ValueOf(name), reflect.ValueOf(value))
 	} else {
-		vVal = vVar
-	}
-	isDeref := vVal.Type().Name() == "" && vVal.Type().Kind() == reflect.Ptr
-	isNew := isDeref && vVal.IsNil()
-	// vAddr is address of value to set (dereferenced & allocated as needed)
-	var vAddr reflect.Value
-	switch {
-	case isNew:
-		vAddr = reflect.New(vVal.Type().Elem())
-	case isDeref && !isNew:
-		vAddr = vVal
-	default:
-		vAddr = vVal.Addr()
-	}
-	vAddrI := vAddr.Interface()
-	err, ok := error(nil), false
-	for _, s := range setters {
-		err = s(vAddrI, blank, value, t)
-		if err == nil {
-			ok = true
-			break
+		vVar, t := fieldFold(vSect, name)
+		l.variable = &name
+		if !vVar.IsValid() {
+			debug("field %s not found\n", name)
+			return c.Collect(extraData{loc: l})
 		}
-		if err != errUnsupportedType {
+		// vVal is either single-valued var, or newly allocated value within multi-valued var
+		var vVal reflect.Value
+		// multi-value if unnamed slice type
+		isMulti := vVar.Type().Name() == "" && vVar.Kind() == reflect.Slice ||
+			vVar.Type().Name() == "" && vVar.Kind() == reflect.Ptr && vVar.Type().Elem().Name() == "" && vVar.Type().Elem().Kind() == reflect.Slice
+		if isMulti && vVar.Kind() == reflect.Ptr {
+			if vVar.IsNil() {
+				vVar.Set(reflect.New(vVar.Type().Elem()))
+			}
+			vVar = vVar.Elem()
+		}
+		if isMulti && blank {
+			vVar.Set(reflect.Zero(vVar.Type()))
+			if isSubsect && vEntry.Kind() != reflect.Ptr {
+				debug("updating changed sub section entry: %#v\n", vEntry.Interface())
+				vMap.SetMapIndex(reflect.ValueOf(sub), vEntry)
+			}
+			return nil
+		}
+		if isMulti {
+			vVal = reflect.New(vVar.Type().Elem()).Elem()
+		} else {
+			vVal = vVar
+		}
+		isDeref := vVal.Type().Name() == "" && vVal.Type().Kind() == reflect.Ptr
+		isNew := isDeref && vVal.IsNil()
+		// vAddr is address of value to set (dereferenced & allocated as needed)
+		var vAddr reflect.Value
+		switch {
+		case isNew:
+			vAddr = reflect.New(vVal.Type().Elem())
+		case isDeref && !isNew:
+			vAddr = vVal
+		default:
+			vAddr = vVal.Addr()
+		}
+		vAddrI := vAddr.Interface()
+		err, ok := error(nil), false
+		for _, s := range setters {
+			err = s(vAddrI, blank, value, t)
+			if err == nil {
+				ok = true
+				break
+			}
+			if err != errUnsupportedType {
+				return locErr{msg: err.Error(), loc: l}
+			}
+		}
+		if !ok {
+			// in case all setters returned errUnsupportedType
 			return locErr{msg: err.Error(), loc: l}
 		}
+		if isNew { // set reference if it was dereferenced and newly allocated
+			vVal.Set(vAddr)
+		}
+		if isMulti { // append if multi-valued
+			vVar.Set(reflect.Append(vVar, vVal))
+		}
+		debug("var %s set: %#v\n", name, vVar.Interface())
 	}
-	if !ok {
-		// in case all setters returned errUnsupportedType
-		return locErr{msg: err.Error(), loc: l}
-	}
-	if isNew { // set reference if it was dereferenced and newly allocated
-		vVal.Set(vAddr)
-	}
-	if isMulti { // append if multi-valued
-		vVar.Set(reflect.Append(vVar, vVal))
+	if isSubsect && vEntry.Kind() != reflect.Ptr {
+		// set new sub section entry
+		debug("updating changed sub section entry: %#v\n", vEntry.Interface())
+		vMap.SetMapIndex(reflect.ValueOf(sub), vEntry)
 	}
 	return nil
 }

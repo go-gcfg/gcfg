@@ -195,10 +195,10 @@ func readInto(config interface{}, fset *token.FileSet, file *token.File,
 	if err != nil {
 		return err
 	}
-	err = readIntoPass(c, config, fset, file, src, true)
-	if err != nil {
-		return err
-	}
+	//err = readIntoPass(c, config, fset, file, src, true)
+	//if err != nil {
+	//	return err
+	//}
 	return c.Done()
 }
 
